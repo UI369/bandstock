@@ -24,7 +24,7 @@ function init() {
 
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(50, 0.5 * aspect, 1, 10000);
+  camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 2500);
   camera.position.z = 2500;
   cameraPerspective = new THREE.PerspectiveCamera(50, 0.5 * aspect, 150, 1000);
   cameraPerspectiveHelper = new THREE.CameraHelper(cameraPerspective);
@@ -57,7 +57,7 @@ function init() {
 
   //
   mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(70, 50, 10, 5, 5, 2),
+    new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
     new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
   );
   scene.add(mesh);
@@ -95,6 +95,13 @@ function onKeyDown(event) {
       activeCamera = cameraPerspective;
       activeHelper = cameraPerspectiveHelper;
 
+      break;
+    case 78 /*N*/:
+      service.send({ type: "GO_NEAR" });
+
+      break;
+    case 70 /*N*/:
+      service.send({ type: "GO_FAR" });
       break;
   }
 }
@@ -140,13 +147,13 @@ function animate() {
 function render() {
   //const r = Date.now() * 0.0005;
 
-  mesh.position.x = 0; // * Math.sin(r);
-  mesh.position.z = service._state.value == "near" ? 400 : 800;
-  mesh.position.y = 0; // * Math.cos(r);
+  mesh.position.x = service._state.value == "near" ? 400 : 1200; // * Math.cos(r);
+  mesh.position.z = 0;
+  mesh.position.y = 0;
 
   if (activeCamera === cameraPerspective) {
     cameraPerspective.fov = 15; //Math.sin(0.5);
-    cameraPerspective.far = mesh.position.length() + 500;
+    cameraPerspective.far = 1300;
     cameraPerspective.updateProjectionMatrix();
 
     cameraPerspectiveHelper.update();
@@ -154,7 +161,7 @@ function render() {
 
     cameraOrthoHelper.visible = false;
   } else {
-    cameraOrtho.far = mesh.position.length() + 500;
+    cameraOrtho.far = 1300;
     cameraOrtho.updateProjectionMatrix();
 
     cameraOrthoHelper.update();
