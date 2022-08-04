@@ -1,6 +1,6 @@
 # bandstock
 
-Clone the repo with ```git clone https://github.com/UI369/bandstock.git```
+Clone the repo with ```git clone -b master https://github.com/UI369/bandstock.git```
 
 Run in terminal:
 ```npm install```
