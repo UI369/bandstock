@@ -3,8 +3,12 @@
 Clone the repo with ```git clone -b master https://github.com/UI369/bandstock.git```
 
 Run in terminal:
+```cd bandstock```
+
 ```npm install```
+
 ```npm run dev```
+
 View app at localhost:1234
 Make sure to allow browser to do "popups" as it will open a new tab. 
 There are a few keymappings that change aspects of the 3D display
