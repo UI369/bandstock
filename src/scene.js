@@ -86,34 +86,22 @@ function init() {
 function onKeyDown(event) {
   switch (event.keyCode) {
     case 79 /*O*/:
-      service.send({ type: "GO_ORTHO" });
-      console.log(service._state.value["camera"]);
-
       activeCamera = cameraOrtho;
       activeHelper = cameraOrthoHelper;
 
-      console.log(service._state.value["camera"]);
       break;
 
     case 80 /*P*/:
-      service.send({ type: "GO_PERSPECTIVE" });
-
       activeCamera = cameraPerspective;
       activeHelper = cameraPerspectiveHelper;
 
-      console.log(service._state.value["block"]);
       break;
     case 78 /*N*/:
       service.send({ type: "GO_NEAR" });
 
-      console.log(service._state.value["block"]);
-
-      service._state.value = 400; // * Math.cos(r);
       break;
     case 70 /*N*/:
       service.send({ type: "GO_FAR" });
-
-      service._state.value = 1200; // * Math.cos(r);
       break;
   }
 }
@@ -159,7 +147,7 @@ function animate() {
 function render() {
   //const r = Date.now() * 0.0005;
 
-  mesh.position.x = 0;
+  mesh.position.x = service._state.value == "near" ? 400 : 1200; // * Math.cos(r);
   mesh.position.z = 0;
   mesh.position.y = 0;
 
