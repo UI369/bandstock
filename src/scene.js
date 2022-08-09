@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as Stats from "stats.js";
-import { service } from "./fsm";
+import { service, emit } from "./fsm";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -19,6 +19,7 @@ animate();
 function init() {
   window.service = service;
   console.log(service);
+  service.send({ type: "GO_NEAR" });
   container = document.createElement("div");
   document.body.appendChild(container);
 
@@ -60,6 +61,7 @@ function init() {
     new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
     new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
   );
+  mesh.position.x = 400; // * Math.cos(r);
   scene.add(mesh);
 
   createStarScape();
@@ -82,38 +84,38 @@ function init() {
   onWindowResize();
 }
 
+emit.subscribe("go_ortho_action", () => {
+  activeCamera = cameraOrtho;
+  activeHelper = cameraOrthoHelper;
+});
+
+emit.subscribe("go_perspective_action", () => {
+  activeCamera = cameraPerspective;
+  activeHelper = cameraPerspectiveHelper;
+});
+
+emit.subscribe("go_near_action", () => {
+  mesh.position.x = 400; // * Math.cos(r);
+});
+
+emit.subscribe("go_far_action", () => {
+  mesh.position.x = 1200; // * Math.cos(r);
+});
+
 //
 function onKeyDown(event) {
   switch (event.keyCode) {
     case 79 /*O*/:
       service.send({ type: "GO_ORTHO" });
-      console.log(service._state.value["camera"]);
-
-      activeCamera = cameraOrtho;
-      activeHelper = cameraOrthoHelper;
-
-      console.log(service._state.value["camera"]);
       break;
-
     case 80 /*P*/:
       service.send({ type: "GO_PERSPECTIVE" });
-
-      activeCamera = cameraPerspective;
-      activeHelper = cameraPerspectiveHelper;
-
-      console.log(service._state.value["block"]);
       break;
     case 78 /*N*/:
       service.send({ type: "GO_NEAR" });
-
-      console.log(service._state.value["block"]);
-
-      service._state.value = 400; // * Math.cos(r);
       break;
     case 70 /*N*/:
       service.send({ type: "GO_FAR" });
-
-      service._state.value = 1200; // * Math.cos(r);
       break;
   }
 }
@@ -159,7 +161,6 @@ function animate() {
 function render() {
   //const r = Date.now() * 0.0005;
 
-  mesh.position.x = 0;
   mesh.position.z = 0;
   mesh.position.y = 0;
 
