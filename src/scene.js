@@ -18,7 +18,6 @@ animate();
 
 function init() {
   window.service = service;
-  console.log(service);
   service.send({ type: "GO_NEAR" });
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -84,21 +83,21 @@ function init() {
   onWindowResize();
 }
 
-emit.subscribe("go_ortho_action", () => {
+emit.subscribe("ortho_action", () => {
   activeCamera = cameraOrtho;
   activeHelper = cameraOrthoHelper;
 });
 
-emit.subscribe("go_perspective_action", () => {
+emit.subscribe("perspective_action", () => {
   activeCamera = cameraPerspective;
   activeHelper = cameraPerspectiveHelper;
 });
 
-emit.subscribe("go_near_action", () => {
+emit.subscribe("near_action", () => {
   mesh.position.x = 400; // * Math.cos(r);
 });
 
-emit.subscribe("go_far_action", () => {
+emit.subscribe("far_action", () => {
   mesh.position.x = 1200; // * Math.cos(r);
 });
 

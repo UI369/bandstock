@@ -6,31 +6,31 @@ inspect({
   iframe: false,
   url: "https://stately.ai/viz?inspect",
 });
-
+export const emit = new EventEmitter();
 const playerMachine =
-  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOk3VTACd0SAHa2BzAF1wDcwBiAcQHkA+nwBKAFQASfRKDoB7WLjaz80kAA9EAJgCMAZhIB2XdoMAWEwFYADAA5dpg9oA0IAJ5btFkgE4r2q5oWFqY2AGxBpgC+kS5oWHiEpOSUNCSyVCzYsryCAAoAosIAygUAwqIAkgBq+apyCkoqSOoe+kYm5gbWdg7ObojaoQY+umYGVkND3gahodGxGDgExCQANrLkjSQAZuhUOQIAcvkAgsJ18oq4yqoaCIOaJKZWuqHa2po2DprhBi7uCF0Nm0JDsunB3gsmlMFm803mIDiS0Saw26C2hD2BwAYmcLg1rk1QHcHk8Xm8Pl8DD8LH9+ghTJpvIZvKEbN5TLpWTCzBZojEQPhZBA4KokQkVslqLQGFQmGBWBwwPirjdmndqf8BqFmbDQrpPuY9KFOQYEeLlkkKNK0hksirGrdEFzhkyOZpPgFRkYtfdqSQrKyDV93q9TebFhKrSl0A7CU6GTZfZCfGzHJ5qentFEBRaUetNoSdns42riVowiRQh7dLDNEYDHYk-SgV44TppoFvIN9Xzc5HLajC8oSJiqKWiS0EJqW3Ynt4PXp-EyLDZNBH4oOC+j4816qrJ3cQr7dIHQSbV1ZGVYLEu5v3N4kJwnob7NPo4XCoaY2dWf-X+UiIA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOk3VTACd0SAHa2BzAF1wDcwBiAcQHkA+nwBKAFQASfRKDoB7WLjaz80kAA9EARgAsADhLaA7AE5TAJmPbNu3QGZtAGhABPRAFpDZkrYCsABl8-Qz8jXWNNAF8IpzQsPEJSckoaElkqFmxZXkEABQBRYQBlfIBhUQBJADU81TkFJRUkdS1NHxJLTT9TI2sfXQA2HydXBDczM36SfrNdH1tLQ1ndM2somIwcAmISACMAG1lMAGsSADN0KmyBADk8gEFhWvlFXGVVDVHbPzbtM1tbQz9axWYy6bRDFzuKwkTz9KwzGx+frGaZrECxTYJXYHY4kQgXK4AMQeT3qr0aoA+blsMxhmmM300cL8mk0hmGWhW3m0tiZukMwWm-yi0RA+FkEDgqgx8W2SWotAYVCYYFYHDApJebyaVNZ3laXTMgPpvlMtg5o1aXh8Rn+Pk8YOMdrRMq2iQoCtS6Uymoa70Q-20JH8fmWXSZPj55shlp81ttvgd2idvhdG1l7uS6F95P9nzavP8xiNQKdPlMFrGoODxk8gPC9L0OjTcTd2MOJ3OVBz2sp7laQeT9jZuk0M1syIhIzCJBW-nBIUBJmLLcx232HbxYAuPYpzVG2iMMLMhvBhj6PPZMb6UxCNORrUCoNXGfbx13ebcPWPp-tF4BlasrYUzGJGNjjDaE5-C+bofjqUKgT+xZnv+V4jNSwTBv0-R+H8hrzKy-QihEQA */
   createMachine(
     {
+      predictableActionArguments: true,
       id: "(machine)",
       type: "parallel",
-      predictableActionArguments: true,
       states: {
         camera: {
           initial: "perspective",
           states: {
             perspective: {
+              entry: "perspective_action",
               on: {
                 GO_ORTHO: {
                   target: "ortho",
-                  actions: ["go_ortho_action"],
                 },
               },
             },
             ortho: {
+              entry: "ortho_action",
               on: {
                 GO_PERSPECTIVE: {
                   target: "perspective",
-                  actions: ["go_perspective_action"],
                 },
               },
             },
@@ -40,18 +40,18 @@ const playerMachine =
           initial: "near",
           states: {
             far: {
+              entry: "far_action",
               on: {
                 GO_NEAR: {
                   target: "near",
-                  actions: ["go_near_action"],
                 },
               },
             },
             near: {
+              entry: "near_action",
               on: {
                 GO_FAR: {
                   target: "far",
-                  actions: ["go_far_action"],
                 },
               },
             },
@@ -61,21 +61,20 @@ const playerMachine =
     },
     {
       actions: {
-        go_ortho_action: (context, event) => {
-          emit.emit("go_ortho_action");
+        ortho_action: (context, event) => {
+          emit.emit("ortho_action");
         },
-        go_perspective_action: (context, event) => {
-          emit.emit("go_perspective_action");
+        perspective_action: (context, event) => {
+          emit.emit("perspective_action");
         },
-        go_near_action: (context, event) => {
-          emit.emit("go_near_action");
+        near_action: (context, event) => {
+          emit.emit("near_action");
         },
-        go_far_action: (context, event) => {
-          emit.emit("go_far_action");
+        far_action: (context, event) => {
+          emit.emit("far_action");
         },
       },
     }
   );
 
 export let service = interpret(playerMachine, { devTools: true }).start();
-export const emit = new EventEmitter();

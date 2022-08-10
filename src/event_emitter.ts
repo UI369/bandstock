@@ -9,7 +9,6 @@ export class EventEmitter {
     }
 
   public subscribe(name: string, cb: Function) {
-    console.log("subscribing: " + name);
     (this.events[name] || (this.events[name] = [])).push(cb);
 
     return {
@@ -19,8 +18,6 @@ export class EventEmitter {
   }
 
   public emit(name: string, ...args: any[]): void {
-    console.log("emitting: " + name);
     (this.events[name] || []).forEach(fn => fn(...args));
-    console.log('done')
   }
 }
