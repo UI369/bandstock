@@ -17,6 +17,8 @@ init();
 animate();
 
 function init() {
+  console.log("TWEEN");
+  console.log(TWEEN);
   window.service = service;
   service.send({ type: "GO_NEAR" });
   container = document.createElement("div");
@@ -97,14 +99,24 @@ emit.subscribe("near_action", (ctx) => {
   console.log("na:");
   console.log(ctx);
   console.log(":na");
-  mesh.position.x = ctx.x; // * Math.cos(r);
+
+  const object = new THREE.Object3D();
+  object.position.x = ctx.x;
+  object.position.y = ctx.y;
+  object.position.z = ctx.z;
+
+  transform(mesh, object, 1000);
 });
 
 emit.subscribe("far_action", (ctx) => {
   console.log("fa:");
   console.log(ctx);
   console.log(":fa");
-  mesh.position.x = ctx.x; // * Math.cos(r);
+  const object = new THREE.Object3D();
+  object.position.x = ctx.x;
+  object.position.y = ctx.y;
+  object.position.z = ctx.z;
+  transform(mesh, object, 1000);
 });
 
 //
@@ -161,6 +173,7 @@ function setOrthoFOV() {
 function animate() {
   requestAnimationFrame(animate);
 
+  TWEEN.update();
   render();
   stats.update();
 }
@@ -226,4 +239,29 @@ function createStarScape() {
     new THREE.PointsMaterial({ color: 0x888888 })
   );
   scene.add(particles);
+}
+
+function transform(object, target, duration) {
+  TWEEN.removeAll();
+
+  new TWEEN.Tween(object.position)
+    .to(
+      { x: target.position.x, y: target.position.y, z: target.position.z },
+      Math.random() * duration + duration
+    )
+    .easing(TWEEN.Easing.Exponential.InOut)
+    .start();
+
+  new TWEEN.Tween(object.rotation)
+    .to(
+      { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z },
+      Math.random() * duration + duration
+    )
+    .easing(TWEEN.Easing.Exponential.InOut)
+    .start();
+
+  new TWEEN.Tween(this)
+    .to({}, duration * 2)
+    .onUpdate(render)
+    .start();
 }
