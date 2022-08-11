@@ -93,12 +93,18 @@ emit.subscribe("perspective_action", () => {
   activeHelper = cameraPerspectiveHelper;
 });
 
-emit.subscribe("near_action", () => {
-  mesh.position.x = 400; // * Math.cos(r);
+emit.subscribe("near_action", (ctx) => {
+  console.log("na:");
+  console.log(ctx);
+  console.log(":na");
+  mesh.position.x = ctx.x; // * Math.cos(r);
 });
 
-emit.subscribe("far_action", () => {
-  mesh.position.x = 1200; // * Math.cos(r);
+emit.subscribe("far_action", (ctx) => {
+  console.log("fa:");
+  console.log(ctx);
+  console.log(":fa");
+  mesh.position.x = ctx.x; // * Math.cos(r);
 });
 
 //
@@ -111,9 +117,11 @@ function onKeyDown(event) {
       service.send({ type: "GO_PERSPECTIVE" });
       break;
     case 78 /*N*/:
+      console.log("sending GO_NEAR");
       service.send({ type: "GO_NEAR" });
       break;
-    case 70 /*N*/:
+    case 70 /*F*/:
+      console.log("sending GO_FAR");
       service.send({ type: "GO_FAR" });
       break;
   }
