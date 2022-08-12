@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as Stats from "stats.js";
-import { service, emit } from "./fsm";
+import { cameraService, blockService, emit } from "./fsm";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -19,8 +19,10 @@ animate();
 function init() {
   console.log("TWEEN");
   console.log(TWEEN);
-  window.service = service;
-  service.send({ type: "GO_NEAR" });
+  window.cameraService = cameraService;
+  //window.blockService = blockService;
+
+  blockService.send({ type: "GO_NEAR" });
   container = document.createElement("div");
   document.body.appendChild(container);
 
@@ -123,18 +125,18 @@ emit.subscribe("far_action", (ctx) => {
 function onKeyDown(event) {
   switch (event.keyCode) {
     case 79 /*O*/:
-      service.send({ type: "GO_ORTHO" });
+      cameraService.send({ type: "GO_ORTHO" });
       break;
     case 80 /*P*/:
-      service.send({ type: "GO_PERSPECTIVE" });
+      cameraService.send({ type: "GO_PERSPECTIVE" });
       break;
     case 78 /*N*/:
       console.log("sending GO_NEAR");
-      service.send({ type: "GO_NEAR" });
+      blockService.send({ type: "GO_NEAR" });
       break;
     case 70 /*F*/:
       console.log("sending GO_FAR");
-      service.send({ type: "GO_FAR" });
+      blockService.send({ type: "GO_FAR" });
       break;
   }
 }
