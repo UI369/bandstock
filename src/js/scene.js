@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as Stats from "stats.js";
+import { assign, createMachine, interpret, spawn } from "xstate";
 import { cameraService, blockService, emit } from "./fsm";
 
 let SCREEN_WIDTH = window.innerWidth;
@@ -17,12 +18,9 @@ init();
 animate();
 
 function init() {
-  console.log("TWEEN");
-  console.log(TWEEN);
   window.cameraService = cameraService;
-  //window.blockService = blockService;
+  window.blockService = blockService;
 
-  blockService.send({ type: "GO_NEAR" });
   container = document.createElement("div");
   document.body.appendChild(container);
 
@@ -98,27 +96,20 @@ emit.subscribe("perspective_action", () => {
 });
 
 emit.subscribe("near_action", (ctx) => {
-  console.log("na:");
-  console.log(ctx);
-  console.log(":na");
-
   const object = new THREE.Object3D();
   object.position.x = ctx.x;
   object.position.y = ctx.y;
   object.position.z = ctx.z;
 
-  transform(mesh, object, 1000);
+  transform(mesh, object, 700);
 });
 
 emit.subscribe("far_action", (ctx) => {
-  console.log("fa:");
-  console.log(ctx);
-  console.log(":fa");
   const object = new THREE.Object3D();
   object.position.x = ctx.x;
   object.position.y = ctx.y;
   object.position.z = ctx.z;
-  transform(mesh, object, 1000);
+  transform(mesh, object, 700);
 });
 
 //

@@ -1,4 +1,4 @@
-import { assign, createMachine, interpret } from "xstate";
+import { assign, createMachine, interpret, sendParent, send } from "xstate";
 import { inspect } from "@xstate/inspect";
 import { EventEmitter } from "./event_emitter";
 
@@ -10,7 +10,7 @@ export const emit = new EventEmitter();
 
 const cameraMachine = createMachine(
   {
-    id: "(camera_machine)",
+    id: "camera_machine",
     initial: "perspective",
     states: {
       perspective: {
@@ -43,12 +43,42 @@ const cameraMachine = createMachine(
   }
 );
 
+// Invoked child machine
+const delayMachine = createMachine({
+  id: "pong",
+  initial: "active",
+  states: {
+    active: {
+      on: {
+        DELAY: {
+          actions: sendParent("GO_NEAR", {
+            delay: 5000,
+          }),
+        },
+      },
+    },
+  },
+});
+
 const blockMachine = createMachine(
   {
-    id: "(block_machine)",
+    id: "block_machine",
+
     context: { x: 0, y: 0, z: 0 },
-    initial: "near",
+    initial: "loading",
     states: {
+      loading: {
+        invoke: {
+          id: "delay",
+          src: delayMachine,
+        },
+        entry: send({ type: "DELAY" }, { to: "delay" }),
+        on: {
+          GO_NEAR: {
+            target: "near",
+          },
+        },
+      },
       far: {
         entry: ["far_assign", "far_action"],
         on: {
@@ -56,6 +86,20 @@ const blockMachine = createMachine(
             target: "near",
           },
         },
+        invoke: [
+          {
+            src: (context, event) =>
+              new Promise((res) => {
+                setTimeout(() => {
+                  res(42);
+                }, 1000);
+              }),
+            onDone: {
+              target: "near",
+              actions: (_, event) => {},
+            },
+          },
+        ],
       },
       near: {
         entry: ["near_assign", "near_action"],
@@ -64,23 +108,31 @@ const blockMachine = createMachine(
             target: "far",
           },
         },
+        invoke: [
+          {
+            src: (context, event) =>
+              new Promise((res) => {
+                setTimeout(() => {
+                  res(43);
+                }, 1000);
+              }),
+            onDone: {
+              target: "far",
+              actions: (_, event) => {
+                //console.log("done", event);
+              },
+            },
+          },
+        ],
       },
     },
   },
   {
     actions: {
       near_action: (context, event) => {
-        console.log("n:");
-        console.log(context);
-        console.log(event);
-        console.log(":n");
         emit.emit("near_action", context);
       },
       far_action: (context, event) => {
-        console.log("f:");
-        console.log(context);
-        console.log(event);
-        console.log(":f");
         emit.emit("far_action", context);
       },
       far_assign: assign({
@@ -92,6 +144,7 @@ const blockMachine = createMachine(
     },
   }
 );
+
 export let blockService = interpret(blockMachine, { devTools: true }).start();
 
 export let cameraService = interpret(cameraMachine, { devTools: true }).start();
