@@ -1,14 +1,13 @@
 import { assign, createMachine, interpret, sendParent, send } from "xstate";
 import { inspect } from "@xstate/inspect";
 import { EventEmitter } from "./event_emitter";
-
+export const emit = new EventEmitter();
 inspect({
   iframe: false,
   url: "https://stately.ai/viz?inspect",
 });
-export const emit = new EventEmitter();
 
-const cameraMachine = createMachine(
+export let cameraMachine = createMachine(
   {
     id: "camera_machine",
     initial: "perspective",
@@ -44,41 +43,13 @@ const cameraMachine = createMachine(
 );
 
 // Invoked child machine
-const delayMachine = createMachine({
-  id: "pong",
-  initial: "active",
-  states: {
-    active: {
-      on: {
-        DELAY: {
-          actions: sendParent("GO_NEAR", {
-            delay: 5000,
-          }),
-        },
-      },
-    },
-  },
-});
 
-const blockMachine = createMachine(
+export let blockMachine = createMachine(
   {
     id: "block_machine",
-
     context: { x: 0, y: 0, z: 0 },
-    initial: "loading",
+    initial: "near",
     states: {
-      loading: {
-        invoke: {
-          id: "delay",
-          src: delayMachine,
-        },
-        entry: send({ type: "DELAY" }, { to: "delay" }),
-        on: {
-          GO_NEAR: {
-            target: "near",
-          },
-        },
-      },
       far: {
         entry: ["far_assign", "far_action"],
         on: {
@@ -144,7 +115,3 @@ const blockMachine = createMachine(
     },
   }
 );
-
-export let blockService = interpret(blockMachine, { devTools: true }).start();
-
-export let cameraService = interpret(cameraMachine, { devTools: true }).start();
