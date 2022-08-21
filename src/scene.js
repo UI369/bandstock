@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import * as Stats from "stats.js";
-import { timer } from "./timer.js";
 import {
   assign,
   createMachine,
@@ -11,7 +10,6 @@ import {
 } from "xstate";
 import { inspect } from "@xstate/inspect";
 import { EventEmitter } from "./event_emitter";
-import { DefaultLoadingManager } from "three";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -257,38 +255,50 @@ const createBlockMachine = (xIn, yIn, zIn) => {
         far: {
           entry: ["far_assign", "far_action"],
           on: {
-            SWAP: {
-              target: "right",
+            GO_NEAR: {
+              target: "near",
             },
           },
-          invoke: [],
+          invoke: [
+            {
+              src: (ctx, event) =>
+                new Promise((res) => {
+                  setTimeout(() => {
+                    res(ctx.count++);
+                    console.log(ctx.count);
+                  }, 1000);
+                }),
+              onDone: {
+                target: "near",
+                actions: (_, event) => {},
+              },
+            },
+          ],
         },
         near: {
           entry: ["near_assign", "near_action"],
           on: {
-            SWAP: {
+            GO_FAR: {
               target: "far",
             },
           },
-          invoke: [],
-        },
-        right: {
-          entry: ["right_assign", "right_action"],
-          on: {
-            SWAP: {
-              target: "left",
+          invoke: [
+            {
+              src: (ctx, event) =>
+                new Promise((res) => {
+                  setTimeout(() => {
+                    res(ctx.count++);
+                    console.log("ctx.count", ctx.count);
+                  }, 1000);
+                }),
+              onDone: {
+                target: "far",
+                actions: (_, event) => {
+                  //console.log("done", event);
+                },
+              },
             },
-          },
-          invoke: [],
-        },
-        left: {
-          entry: ["left_assign", "left_action"],
-          on: {
-            SWAP: {
-              target: "near",
-            },
-          },
-          invoke: [],
+          ],
         },
       },
     },
@@ -323,31 +333,11 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           object.position.z = ctx.z;
           transform(ctx.block, object, 700);
         },
-        right_action: (ctx, event) => {
-          const object = new THREE.Object3D();
-          object.position.x = ctx.x;
-          object.position.y = ctx.y;
-          object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
-        },
-        left_action: (ctx, event) => {
-          const object = new THREE.Object3D();
-          object.position.x = ctx.x;
-          object.position.y = ctx.y;
-          object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
-        },
         far_assign: assign({
           x: 1200,
         }),
         near_assign: assign({
           x: 800,
-        }),
-        right_assign: assign({
-          y: 400,
-        }),
-        left_assign: assign({
-          y: 0,
         }),
       },
     }
@@ -430,111 +420,5 @@ function createGameSystem() {
   cameraService = interpret(cameraMachine, { devTools: true }).start();
 }
 
-function doTimer(service1, service2, doLog, label) {
-  interval = 1000;
-
-  let t1 = new timer(
-    () => {
-      service1.send("SWAP");
-    },
-    interval,
-    (now, expected, drift, interval) => {
-      console.log("now", now);
-      console.log("drift", drift);
-      console.log("expected", expected);
-      console.log("interval", interval);
-    },
-    doLog,
-
-    (logLabel, now, expected, drift, interval, lastInterval) => {
-      if (drift > 10) {
-        console.log("logLabel", logLabel);
-        console.log("now", now / 1000);
-        console.log("expected", expected);
-        console.log("drift", drift);
-        console.log("lastInterval", lastInterval);
-      }
-    },
-    label
-  );
-
-  let t2 = new timer(
-    () => {
-      service2.send("SWAP");
-    },
-    interval,
-    (now, expected, drift, interval) => {
-      console.log("now", now);
-      console.log("drift", drift);
-      console.log("expected", expected);
-      console.log("interval", interval);
-    },
-    doLog,
-    (logLabel, now, expected, drift, interval, lastInterval) => {
-      if (drift > 10) {
-        console.log("logLabel", logLabel);
-        console.log("now", now / 1000);
-        console.log("expected", expected);
-        console.log("drift", drift);
-        console.log("lastInterval", lastInterval);
-      }
-    },
-    label
-  );
-
-  t1.start();
-  t2.start();
-}
-
 init();
 animate();
-doTimer(blockService, true, "a");
-//doTimer(blockService2, true, "b");
-
-// logLabel a scene.js:415:14
-// now 1661013125.777 scene.js:416:14
-// expected 1661013125774 scene.js:417:14
-// drift 3 scene.js:418:14
-// lastInterval 2992 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013125.779 scene.js:416:14
-// expected 1661013125774 scene.js:417:14
-// drift 5 scene.js:418:14
-// lastInterval 2994 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013128.775 scene.js:416:14
-// expected 1661013128774 scene.js:417:14
-// drift 1 scene.js:418:14
-// lastInterval 2995 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013128.776 scene.js:416:14
-// expected 1661013128774 scene.js:417:14
-// drift 2 scene.js:418:14
-// lastInterval 2997 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013131.78 scene.js:416:14
-// expected 1661013131774 scene.js:417:14
-// drift 6 scene.js:418:14
-// lastInterval 2998 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013131.781 scene.js:416:14
-// expected 1661013131774 scene.js:417:14
-// drift 7 scene.js:418:14
-// lastInterval 2999 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013134.776 scene.js:416:14
-// expected 1661013134774 scene.js:417:14
-// drift 2 scene.js:418:14
-// lastInterval 2993 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013134.777 scene.js:416:14
-// expected 1661013134774 scene.js:417:14
-// drift 3 scene.js:418:14
-// lastInterval 2994
