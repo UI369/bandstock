@@ -1,29 +1,21 @@
 import * as THREE from "three";
 import * as Stats from "stats.js";
 import { timer } from "./timer.js";
-import {
-  assign,
-  createMachine,
-  interpret,
-  spawn,
-  sendParent,
-  send,
-} from "xstate";
+import { assign, createMachine, interpret } from "xstate";
 import { inspect } from "@xstate/inspect";
-import { EventEmitter } from "./event_emitter";
-import { DefaultLoadingManager } from "three";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
 let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
 
 let container, stats;
+let mesh;
+let material;
 let blockService, blockService2, cameraService;
 let camera, scene, renderer;
 let cameraRig, activeCamera, activeHelper;
 let cameraPerspective, cameraOrtho;
 let cameraPerspectiveHelper, cameraOrthoHelper;
-let emit = new EventEmitter();
 
 const frustumSize = 600;
 
@@ -64,11 +56,20 @@ function init() {
 
   scene.add(cameraRig);
 
+  var light = new THREE.PointLight(0xffffff, 10000);
+
+  //Give it a better x,y,z position
+  light.position.set(50, 50, 50);
+
+  //Add it to the scene
+  scene.add(light);
+
+  const textureLoader = new THREE.TextureLoader();
+  const texture = textureLoader.load("assets/crate.gif");
+  material = new THREE.MeshBasicMaterial({ map: texture });
+
   //
-  mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
-  );
+  mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 50, 70, 2, 5, 5), material);
   mesh.position.x = 400; // * Math.cos(r);
   mesh.visible = false;
   scene.add(mesh);
@@ -302,9 +303,13 @@ const createBlockMachine = (xIn, yIn, zIn) => {
         },
         ready_assign: assign({
           block: () => {
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load("assets/crate.gif");
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+
             let block = new THREE.Mesh(
               new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
-              new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
+              material
             );
             return block;
           },
@@ -430,7 +435,7 @@ function createGameSystem() {
   cameraService = interpret(cameraMachine, { devTools: true }).start();
 }
 
-function doTimer(service1, service2, doLog, label) {
+function doTimer(service1, doLog, label) {
   interval = 1000;
 
   let t1 = new timer(
@@ -458,83 +463,9 @@ function doTimer(service1, service2, doLog, label) {
     label
   );
 
-  let t2 = new timer(
-    () => {
-      service2.send("SWAP");
-    },
-    interval,
-    (now, expected, drift, interval) => {
-      console.log("now", now);
-      console.log("drift", drift);
-      console.log("expected", expected);
-      console.log("interval", interval);
-    },
-    doLog,
-    (logLabel, now, expected, drift, interval, lastInterval) => {
-      if (drift > 10) {
-        console.log("logLabel", logLabel);
-        console.log("now", now / 1000);
-        console.log("expected", expected);
-        console.log("drift", drift);
-        console.log("lastInterval", lastInterval);
-      }
-    },
-    label
-  );
-
   t1.start();
-  t2.start();
 }
 
 init();
 animate();
 doTimer(blockService, true, "a");
-//doTimer(blockService2, true, "b");
-
-// logLabel a scene.js:415:14
-// now 1661013125.777 scene.js:416:14
-// expected 1661013125774 scene.js:417:14
-// drift 3 scene.js:418:14
-// lastInterval 2992 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013125.779 scene.js:416:14
-// expected 1661013125774 scene.js:417:14
-// drift 5 scene.js:418:14
-// lastInterval 2994 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013128.775 scene.js:416:14
-// expected 1661013128774 scene.js:417:14
-// drift 1 scene.js:418:14
-// lastInterval 2995 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013128.776 scene.js:416:14
-// expected 1661013128774 scene.js:417:14
-// drift 2 scene.js:418:14
-// lastInterval 2997 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013131.78 scene.js:416:14
-// expected 1661013131774 scene.js:417:14
-// drift 6 scene.js:418:14
-// lastInterval 2998 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013131.781 scene.js:416:14
-// expected 1661013131774 scene.js:417:14
-// drift 7 scene.js:418:14
-// lastInterval 2999 scene.js:419:14
-
-// logLabel b scene.js:415:14
-// now 1661013134.776 scene.js:416:14
-// expected 1661013134774 scene.js:417:14
-// drift 2 scene.js:418:14
-// lastInterval 2993 scene.js:419:14
-
-// logLabel a scene.js:415:14
-// now 1661013134.777 scene.js:416:14
-// expected 1661013134774 scene.js:417:14
-// drift 3 scene.js:418:14
-// lastInterval 2994

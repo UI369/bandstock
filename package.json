@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "parcel src/index.html",
+    "build": "rm -rf dist && mkdir ./dist && mkdir ./dist/assets && cp src/assets/* ./dist/assets/.",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "check": "prettier --check \"src/**/*.{js,jsx}\"",
     "lint": "eslint \"src/**/*.{js,jsx,html}\" --quiet"
@@ -23,6 +24,7 @@
   "dependencies": {
     "@xstate/inspect": "^0.7.0",
     "d3-force-3d": "^3.0.3",
+    "recursive-copy": "2.0.14",
     "stats.js": "^0.17.0",
     "three": "^0.142.0",
     "xstate": "^4.32.1"
