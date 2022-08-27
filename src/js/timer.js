@@ -37,14 +37,17 @@ export let timer = function AdjustingInterval(
     }
 
     if (drift > that.interval) {
-      // You could have some default stuff here too...
+      expected += that.interval;
+      lastInterval = 1;
+      timeout = setTimeout(step, Math.max(0, lastInterval));
+
       if (errorFunc) errorFunc(now, expected, drift, that.interval);
+    } else {
+      workFunc();
+
+      expected += that.interval;
+      lastInterval = that.interval - drift;
+      timeout = setTimeout(step, Math.max(0, lastInterval));
     }
-
-    workFunc();
-
-    expected += that.interval;
-    lastInterval = that.interval - drift;
-    timeout = setTimeout(step, Math.max(0, lastInterval));
   }
 };

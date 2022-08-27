@@ -11,7 +11,16 @@ let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
 let container, stats;
 let mesh;
 let material;
-let blockService, blockService2, cameraService;
+let blockService,
+  blockService2,
+  blockService3,
+  blockService4,
+  blockService5,
+  blockService6,
+  blockService7,
+  blockService8,
+  blockService9,
+  cameraService;
 let camera, scene, renderer;
 let cameraRig, activeCamera, activeHelper;
 let cameraPerspective, cameraOrtho;
@@ -197,7 +206,7 @@ function transform(object, target, duration) {
   new TWEEN.Tween(object.position)
     .to(
       { x: target.position.x, y: target.position.y, z: target.position.z },
-      Math.random() * duration + duration
+      duration
     )
     .easing(TWEEN.Easing.Exponential.InOut)
     .start();
@@ -205,7 +214,7 @@ function transform(object, target, duration) {
   new TWEEN.Tween(object.rotation)
     .to(
       { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z },
-      Math.random() * duration + duration
+      duration
     )
     .easing(TWEEN.Easing.Exponential.InOut)
     .start();
@@ -240,26 +249,29 @@ const createBlockMachine = (xIn, yIn, zIn) => {
     {
       id: "block_machine",
       predictableActionArguments: true,
-      context: { x: xIn, y: yIn, z: zIn, block: undefined, count: 0 },
+      context: {
+        x: xIn,
+        y: yIn,
+        z: zIn,
+        speed: 200,
+        block: undefined,
+        count: 0,
+      },
       initial: "ready",
       states: {
         ready: {
           entry: ["ready_assign", "ready_init"],
           on: {
-            GO_NEAR: {
-              target: "near",
+            SWAP: {
+              target: "far",
             },
-          },
-          after: {
-            // after 1 second, transition to yellow
-            1000: { target: "near" },
           },
         },
         far: {
           entry: ["far_assign", "far_action"],
           on: {
             SWAP: {
-              target: "right",
+              target: "near",
             },
           },
           invoke: [],
@@ -308,7 +320,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
             const material = new THREE.MeshBasicMaterial({ map: texture });
 
             let block = new THREE.Mesh(
-              new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
+              new THREE.BoxGeometry(10, 50, 50, 2, 5, 5),
               material
             );
             return block;
@@ -319,40 +331,48 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           object.position.x = ctx.x;
           object.position.y = ctx.y;
           object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
+          transform(ctx.block, object, ctx.speed);
         },
         far_action: (ctx, event) => {
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
           object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
+          transform(ctx.block, object, ctx.speed);
         },
         right_action: (ctx, event) => {
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
           object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
+          transform(ctx.block, object, ctx.speed);
         },
         left_action: (ctx, event) => {
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
           object.position.z = ctx.z;
-          transform(ctx.block, object, 700);
+          transform(ctx.block, object, ctx.speed);
         },
         far_assign: assign({
-          x: 1200,
+          x: (ctx, event) => {
+            return ctx.x + 150;
+          },
         }),
         near_assign: assign({
-          x: 800,
+          x: (ctx, event) => {
+            return ctx.x - 150;
+          },
         }),
         right_assign: assign({
-          y: 400,
+          y: (ctx, event) => {
+            return ctx.y + 5;
+          },
         }),
         left_assign: assign({
-          y: 0,
+          y: (ctx, event) => {
+            return ctx.y - 5;
+          },
         }),
       },
     }
@@ -364,8 +384,15 @@ function createGameSystem() {
     iframe: false,
     url: "https://stately.ai/viz?inspect",
   });
-  let blockMachine = createBlockMachine(800, -50, 0);
-  let blockMachine2 = createBlockMachine(800, 50, 0);
+  let blockMachine = createBlockMachine(800, -50, -50);
+  let blockMachine2 = createBlockMachine(800, 0, -50);
+  let blockMachine3 = createBlockMachine(800, 50, -50);
+  let blockMachine4 = createBlockMachine(800, -50, 0);
+  let blockMachine5 = createBlockMachine(800, 0, 0);
+  let blockMachine6 = createBlockMachine(800, 50, 0);
+  let blockMachine7 = createBlockMachine(800, -50, 50);
+  let blockMachine8 = createBlockMachine(800, 0, 50);
+  let blockMachine9 = createBlockMachine(800, 50, 50);
   let cameraMachine = createMachine(
     {
       id: "camera_machine",
@@ -429,35 +456,42 @@ function createGameSystem() {
   });
 
   blockService = interpret(blockMachine, { devTools: true }).start();
-  window.blockService = blockService;
   blockService2 = interpret(blockMachine2, { devTools: true }).start();
-
+  blockService3 = interpret(blockMachine3, { devTools: true }).start();
+  blockService4 = interpret(blockMachine4, { devTools: true }).start();
+  blockService5 = interpret(blockMachine5, { devTools: true }).start();
+  blockService6 = interpret(blockMachine6, { devTools: true }).start();
+  blockService7 = interpret(blockMachine7, { devTools: true }).start();
+  blockService8 = interpret(blockMachine8, { devTools: true }).start();
+  blockService9 = interpret(blockMachine9, { devTools: true }).start();
   cameraService = interpret(cameraMachine, { devTools: true }).start();
 }
 
-function doTimer(service1, doLog, label) {
-  interval = 1000;
+function doTimer(services, doLog, label) {
+  interval = 400;
 
   let t1 = new timer(
     () => {
-      service1.send("SWAP");
+      services.map((s) => {
+        s.send("SWAP");
+      });
     },
     interval,
     (now, expected, drift, interval) => {
-      console.log("now", now);
-      console.log("drift", drift);
-      console.log("expected", expected);
-      console.log("interval", interval);
+      // console.log("now", now);
+      // console.log("drift", drift);
+      // console.log("expected", expected);
+      // console.log("interval", interval);
     },
     doLog,
 
     (logLabel, now, expected, drift, interval, lastInterval) => {
-      if (drift > 10) {
-        console.log("logLabel", logLabel);
-        console.log("now", now / 1000);
-        console.log("expected", expected);
-        console.log("drift", drift);
-        console.log("lastInterval", lastInterval);
+      if (drift > 20) {
+        // console.log("logLabel", logLabel);
+        // console.log("now", now / 1000);
+        // console.log("expected", expected);
+        // console.log("drift", drift);
+        // console.log("lastInterval", lastInterval);
       }
     },
     label
@@ -468,4 +502,18 @@ function doTimer(service1, doLog, label) {
 
 init();
 animate();
-doTimer(blockService, true, "a");
+doTimer(
+  [
+    blockService,
+    blockService2,
+    blockService3,
+    blockService4,
+    blockService5,
+    blockService6,
+    blockService7,
+    blockService8,
+    blockService9,
+  ],
+  true,
+  "a"
+);
