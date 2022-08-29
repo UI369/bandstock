@@ -3,6 +3,7 @@ import * as Stats from "stats.js";
 import { timer } from "./timer.js";
 import { assign, createMachine, interpret } from "xstate";
 import { inspect } from "@xstate/inspect";
+import { Vector4 } from "three";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -25,6 +26,10 @@ let camera, scene, renderer;
 let cameraRig, activeCamera, activeHelper;
 let cameraPerspective, cameraOrtho;
 let cameraPerspectiveHelper, cameraOrthoHelper;
+let clickMouse, moveMouse, intersects, currentTile;
+let tiles = [];
+// allow mousepick
+let raycaster, INTERSECTED;
 
 const frustumSize = 600;
 
@@ -65,12 +70,9 @@ function init() {
 
   scene.add(cameraRig);
 
+  // add light
   var light = new THREE.PointLight(0xffffff, 10000);
-
-  //Give it a better x,y,z position
   light.position.set(50, 50, 50);
-
-  //Add it to the scene
   scene.add(light);
 
   const textureLoader = new THREE.TextureLoader();
@@ -92,6 +94,38 @@ function init() {
   container.appendChild(renderer.domElement);
 
   renderer.autoClear = false;
+
+  //find intersections
+  // allow mousepick
+
+  clickMouse = new THREE.Vector2();
+  moveMouse = new THREE.Vector2();
+
+  document.addEventListener("pointermove", (event) => {
+    let vp = new Vector4();
+    renderer.getCurrentViewport(vp);
+
+    moveMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    moveMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(moveMouse, activeCamera);
+    intersects = raycaster.intersectObjects(tiles, true);
+    if (intersects.length > 0) {
+      if (!currentTile) {
+        currentTile = intersects[0].object;
+        currentTile.visible = false;
+      } else if (currentTile && intersects[0] != currentTile) {
+        console.log(currentTile);
+        currentTile.visible = true;
+        currentTile = intersects[0].object;
+        currentTile.visible = false;
+      }
+    } else {
+      currentTile.visible = true;
+      currentTile = null;
+    }
+  });
 
   //
   stats = new Stats();
@@ -117,7 +151,7 @@ function onWindowResize() {
   camera.aspect = 0.5 * aspect;
   camera.updateProjectionMatrix();
 
-  cameraPerspective.aspect = 0.5 * aspect;
+  cameraPerspective.aspect = 1 * aspect;
   cameraPerspective.updateProjectionMatrix();
 
   setOrthoFOV();
@@ -145,38 +179,12 @@ function render() {
   mesh.position.z = 0;
   mesh.position.y = 0;
 
-  if (activeCamera === cameraPerspective) {
-    cameraPerspective.fov = 15; //Math.sin(0.5);
-    cameraPerspective.far = 1300;
-    cameraPerspective.updateProjectionMatrix();
-
-    cameraPerspectiveHelper.update();
-    cameraPerspectiveHelper.visible = true;
-
-    cameraOrthoHelper.visible = false;
-  } else {
-    cameraOrtho.far = 1300;
-    cameraOrtho.updateProjectionMatrix();
-
-    cameraOrthoHelper.update();
-    cameraOrthoHelper.visible = true;
-
-    cameraPerspectiveHelper.visible = false;
-  }
-
   cameraRig.lookAt(mesh.position);
 
+  //render from current activeCamera
   renderer.clear();
-
-  activeHelper.visible = false;
-
-  renderer.setViewport(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+  renderer.setViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   renderer.render(scene, activeCamera);
-
-  activeHelper.visible = true;
-
-  renderer.setViewport(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
-  renderer.render(scene, camera);
 }
 
 function createStarScape() {
@@ -228,10 +236,20 @@ function transform(object, target, duration) {
 function onKeyDown(event) {
   switch (event.keyCode) {
     case 79 /*O*/:
+      console.log("go_ortho");
       cameraService.send({ type: "GO_ORTHO" });
       break;
     case 80 /*P*/:
+      console.log("go_perspective");
       cameraService.send({ type: "GO_PERSPECTIVE" });
+      break;
+    case 76 /*L*/:
+      console.log("go_live");
+      cameraService.send({ type: "GO_LIVE" });
+      break;
+    case 59 /*;*/:
+      console.log("go_backstage");
+      cameraService.send({ type: "GO_BACKSTAGE" });
       break;
     case 78 /*N*/:
       console.log("sending GO_NEAR");
@@ -311,6 +329,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           ctx.block.position.x = ctx.x;
           ctx.block.position.y = ctx.y;
           ctx.block.position.z = ctx.z;
+          console.log("ctx.block.userData", ctx.block.userData);
           scene.add(ctx.block);
         },
         ready_assign: assign({
@@ -320,13 +339,18 @@ const createBlockMachine = (xIn, yIn, zIn) => {
             const material = new THREE.MeshBasicMaterial({ map: texture });
 
             let block = new THREE.Mesh(
-              new THREE.BoxGeometry(10, 50, 50, 2, 5, 5),
+              new THREE.BoxGeometry(50, 50, 50, 5, 5, 5),
               material
             );
+            block.userData.type = "tile";
+            block.userData.machine = this;
+            tiles.push(block);
             return block;
           },
         }),
         near_action: (ctx, event) => {
+          ctx.x -= 20;
+
           let object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
@@ -334,6 +358,8 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           transform(ctx.block, object, ctx.speed);
         },
         far_action: (ctx, event) => {
+          ctx.x += 20;
+
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
@@ -354,16 +380,6 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           object.position.z = ctx.z;
           transform(ctx.block, object, ctx.speed);
         },
-        far_assign: assign({
-          x: (ctx, event) => {
-            return ctx.x + 150;
-          },
-        }),
-        near_assign: assign({
-          x: (ctx, event) => {
-            return ctx.x - 150;
-          },
-        }),
         right_assign: assign({
           y: (ctx, event) => {
             return ctx.y + 5;
@@ -396,21 +412,40 @@ function createGameSystem() {
   let cameraMachine = createMachine(
     {
       id: "camera_machine",
-      initial: "perspective",
+      initial: "live",
       states: {
-        perspective: {
-          entry: "perspective_action",
+        live: {
+          entry: "live_action",
+          initial: "perspective",
           on: {
-            GO_ORTHO: {
-              target: "ortho",
+            GO_BACKSTAGE: {
+              target: "backstage",
+            },
+          },
+          states: {
+            perspective: {
+              entry: "perspective_action",
+              on: {
+                GO_ORTHO: {
+                  target: "ortho",
+                },
+              },
+            },
+            ortho: {
+              entry: "ortho_action",
+              on: {
+                GO_PERSPECTIVE: {
+                  target: "perspective",
+                },
+              },
             },
           },
         },
-        ortho: {
-          entry: "ortho_action",
+        backstage: {
+          entry: "backstage_action",
           on: {
-            GO_PERSPECTIVE: {
-              target: "perspective",
+            GO_LIVE: {
+              target: "live",
             },
           },
         },
@@ -419,12 +454,41 @@ function createGameSystem() {
     {
       actions: {
         ortho_action: (context, event) => {
+          console.log("ortho");
+          cameraOrtho.far = 1300;
+          cameraOrtho.updateProjectionMatrix();
+
+          cameraOrthoHelper.update();
+
           activeCamera = cameraOrtho;
           activeHelper = cameraOrthoHelper;
         },
         perspective_action: (context, event) => {
+          console.log("perspective");
+
+          cameraPerspective.fov = 15; //Math.sin(0.5);
+          cameraPerspective.far = 1300;
+          cameraPerspective.updateProjectionMatrix();
+
+          cameraPerspectiveHelper.update();
+
           activeCamera = cameraPerspective;
           activeHelper = cameraPerspectiveHelper;
+        },
+        live_action: (context, event) => {
+          console.log("live");
+          console.log("context", context);
+          console.log("event", event);
+
+          cameraOrtho.visible = false;
+          cameraOrthoHelper.visible = false;
+          cameraPerspectiveHelper.visible = false;
+          cameraOrthoHelper.visible = false;
+        },
+        backstage_action: (context, event) => {
+          console.log("backstage");
+          activeHelper.visible = true;
+          activeCamera = camera;
         },
       },
     }
@@ -465,6 +529,7 @@ function createGameSystem() {
   blockService8 = interpret(blockMachine8, { devTools: true }).start();
   blockService9 = interpret(blockMachine9, { devTools: true }).start();
   cameraService = interpret(cameraMachine, { devTools: true }).start();
+  window.cameraService = cameraService;
 }
 
 function doTimer(services, doLog, label) {
@@ -502,18 +567,18 @@ function doTimer(services, doLog, label) {
 
 init();
 animate();
-doTimer(
-  [
-    blockService,
-    blockService2,
-    blockService3,
-    blockService4,
-    blockService5,
-    blockService6,
-    blockService7,
-    blockService8,
-    blockService9,
-  ],
-  true,
-  "a"
-);
+// doTimer(
+//   [
+//     blockService,
+//     blockService2,
+//     blockService3,
+//     blockService4,
+//     blockService5,
+//     blockService6,
+//     blockService7,
+//     blockService8,
+//     blockService9,
+//   ],
+//   true,
+//   "a"
+// );
