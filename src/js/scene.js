@@ -41,7 +41,7 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 2500);
   camera.position.z = 2500;
-  cameraPerspective = new THREE.PerspectiveCamera(50, 0.5 * aspect, 150, 1000);
+  cameraPerspective = new THREE.PerspectiveCamera(50, 1 * aspect, 150, 1000);
   cameraPerspectiveHelper = new THREE.CameraHelper(cameraPerspective);
 
   //camera visualizer - LineSegments
@@ -76,7 +76,7 @@ function init() {
   scene.add(light);
 
   const textureLoader = new THREE.TextureLoader();
-  const texture = textureLoader.load("assets/crate.gif");
+  const texture = textureLoader.load("assets/blacktile.gif");
   material = new THREE.MeshBasicMaterial({ map: texture });
 
   //
@@ -148,7 +148,7 @@ function onWindowResize() {
 
   renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  camera.aspect = 0.5 * aspect;
+  camera.aspect = 1 * aspect;
   camera.updateProjectionMatrix();
 
   cameraPerspective.aspect = 1 * aspect;
@@ -158,8 +158,8 @@ function onWindowResize() {
 }
 
 function setOrthoFOV() {
-  cameraOrtho.left = (-0.5 * frustumSize * aspect) / 8;
-  cameraOrtho.right = (0.5 * frustumSize * aspect) / 8;
+  cameraOrtho.left = (-1 * frustumSize * aspect) / 8;
+  cameraOrtho.right = (1 * frustumSize * aspect) / 8;
   cameraOrtho.top = frustumSize / 8;
   cameraOrtho.bottom = -frustumSize / 8;
   cameraOrtho.updateProjectionMatrix();
@@ -335,7 +335,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
         ready_assign: assign({
           block: () => {
             const textureLoader = new THREE.TextureLoader();
-            const texture = textureLoader.load("assets/crate.gif");
+            const texture = textureLoader.load("assets/blacktile.png");
             const material = new THREE.MeshBasicMaterial({ map: texture });
 
             let block = new THREE.Mesh(
@@ -343,7 +343,6 @@ const createBlockMachine = (xIn, yIn, zIn) => {
               material
             );
             block.userData.type = "tile";
-            block.userData.machine = this;
             tiles.push(block);
             return block;
           },
