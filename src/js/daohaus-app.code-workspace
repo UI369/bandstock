@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "../../../daohaus-app"
+		},
+		{
+			"path": "../../../learning/adopt-me"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../learning/frontend-masters-xstate-v2"
+		},
+		{
+			"path": "../../../learning/advanced-git-exercises"
+		},
+		{
+			"path": "../../../daohaus-website"
+		},
+		{
+			"path": "../../../tween.js"
+		},
+		{
+			"path": "../../../neon-fantasy"
+		}
+	],
+	"settings": {}
+}

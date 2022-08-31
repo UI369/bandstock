@@ -4,30 +4,29 @@ import { timer } from "./timer.js";
 import { assign, createMachine, interpret } from "xstate";
 import { inspect } from "@xstate/inspect";
 import { Vector4 } from "three";
+import { EventEmitter } from "./event_emitter.ts";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
 let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
 
-let container, stats;
-let mesh;
-let material;
-let blockService,
-  blockService2,
-  blockService3,
-  blockService4,
-  blockService5,
-  blockService6,
-  blockService7,
-  blockService8,
-  blockService9,
-  cameraService;
+let emit = new EventEmitter();
+let container, stats, mesh;
+let blockServices = [];
+let blockService, cameraService;
 let camera, scene, renderer;
 let cameraRig, activeCamera, activeHelper;
 let cameraPerspective, cameraOrtho;
 let cameraPerspectiveHelper, cameraOrthoHelper;
-let clickMouse, moveMouse, intersects, currentTile;
+let currentTile;
+let clock = new THREE.Clock();
+let clockDelta = 0;
+// 30 fps
+let framerate = 1 / 30;
 let tiles = [];
+let theta = 0;
+let delta = 0.1;
+
 // allow mousepick
 let raycaster, INTERSECTED;
 
@@ -41,7 +40,7 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 2500);
   camera.position.z = 2500;
-  cameraPerspective = new THREE.PerspectiveCamera(50, 1 * aspect, 150, 1000);
+  cameraPerspective = new THREE.PerspectiveCamera(50, 1 * aspect, 150, 1500);
   cameraPerspectiveHelper = new THREE.CameraHelper(cameraPerspective);
 
   //camera visualizer - LineSegments
@@ -64,10 +63,8 @@ function init() {
   cameraPerspective.rotation.y = Math.PI;
 
   cameraRig = new THREE.Group();
-
   cameraRig.add(cameraPerspective);
   cameraRig.add(cameraOrtho);
-
   scene.add(cameraRig);
 
   // add light
@@ -75,13 +72,12 @@ function init() {
   light.position.set(50, 50, 50);
   scene.add(light);
 
-  const textureLoader = new THREE.TextureLoader();
-  const texture = textureLoader.load("assets/blacktile.gif");
-  material = new THREE.MeshBasicMaterial({ map: texture });
-
   //
-  mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 50, 70, 2, 5, 5), material);
-  mesh.position.x = 400; // * Math.cos(r);
+  mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
+    new THREE.MeshBasicMaterial({ color: 0xffff00 })
+  );
+  mesh.position.x = 800; // * Math.cos(r);
   mesh.visible = false;
   scene.add(mesh);
 
@@ -97,7 +93,19 @@ function init() {
 
   //find intersections
   // allow mousepick
+  addMouseHandlers();
+  //
+  stats = new Stats();
+  container.appendChild(stats.dom);
 
+  //
+  window.addEventListener("resize", onWindowResize);
+  document.addEventListener("keydown", onKeyDown);
+  onWindowResize();
+  createGameSystem();
+}
+
+function addMouseHandlers() {
   clickMouse = new THREE.Vector2();
   moveMouse = new THREE.Vector2();
 
@@ -112,30 +120,21 @@ function init() {
     raycaster.setFromCamera(moveMouse, activeCamera);
     intersects = raycaster.intersectObjects(tiles, true);
     if (intersects.length > 0) {
+      console.log(intersects);
       if (!currentTile) {
         currentTile = intersects[0].object;
-        currentTile.visible = false;
+        console.log("object:", intersects[0].object);
+        emit.emit(currentTile.userData.name + ".hover");
       } else if (currentTile && intersects[0] != currentTile) {
-        console.log(currentTile);
-        currentTile.visible = true;
+        emit.emit(currentTile.userData.name + ".unhover");
         currentTile = intersects[0].object;
-        currentTile.visible = false;
+        emit.emit(currentTile.userData.name + ".hover");
       }
     } else {
-      currentTile.visible = true;
+      emit.emit(currentTile?.userData.name + ".unhover");
       currentTile = null;
     }
   });
-
-  //
-  stats = new Stats();
-  container.appendChild(stats.dom);
-
-  //
-  window.addEventListener("resize", onWindowResize);
-  document.addEventListener("keydown", onKeyDown);
-  onWindowResize();
-  createGameSystem();
 }
 
 function onWindowResize() {
@@ -167,17 +166,30 @@ function setOrthoFOV() {
 
 function animate() {
   requestAnimationFrame(animate);
-
   TWEEN.update();
-  render();
+  clockDelta += clock.getDelta();
+
+  if (clockDelta > framerate) {
+    // The draw or time dependent code are here
+    render();
+
+    clockDelta = clockDelta % framerate;
+  }
+
   stats.update();
 }
 
 function render() {
   //const r = Date.now() * 0.0005;
 
-  mesh.position.z = 0;
-  mesh.position.y = 0;
+  theta += delta;
+  activeCamera.position.x = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
+  activeCamera.position.y = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
+  activeCamera.position.z = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
+  activeCamera.lookAt(mesh.position);
+  if (theta > 5) {
+    delta = -delta;
+  }
 
   cameraRig.lookAt(mesh.position);
 
@@ -262,10 +274,10 @@ function onKeyDown(event) {
   }
 }
 
-const createBlockMachine = (xIn, yIn, zIn) => {
+const createBlockMachine = (nameIn, xIn, yIn, zIn) => {
   return createMachine(
     {
-      id: "block_machine",
+      id: "block_machine." + nameIn,
       predictableActionArguments: true,
       context: {
         x: xIn,
@@ -273,6 +285,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
         z: zIn,
         speed: 200,
         block: undefined,
+        name: nameIn,
         count: 0,
       },
       initial: "ready",
@@ -281,12 +294,12 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           entry: ["ready_assign", "ready_init"],
           on: {
             SWAP: {
-              target: "far",
+              target: "near",
             },
           },
         },
         far: {
-          entry: ["far_assign", "far_action"],
+          entry: ["far_action"],
           on: {
             SWAP: {
               target: "near",
@@ -295,7 +308,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           invoke: [],
         },
         near: {
-          entry: ["near_assign", "near_action"],
+          entry: ["near_action"],
           on: {
             SWAP: {
               target: "far",
@@ -304,7 +317,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           invoke: [],
         },
         right: {
-          entry: ["right_assign", "right_action"],
+          entry: ["right_action"],
           on: {
             SWAP: {
               target: "left",
@@ -313,7 +326,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           invoke: [],
         },
         left: {
-          entry: ["left_assign", "left_action"],
+          entry: ["left_action"],
           on: {
             SWAP: {
               target: "near",
@@ -329,7 +342,8 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           ctx.block.position.x = ctx.x;
           ctx.block.position.y = ctx.y;
           ctx.block.position.z = ctx.z;
-          console.log("ctx.block.userData", ctx.block.userData);
+          ctx.block.userData.blockService = ctx.blockService;
+          ctx.block.userData.name = ctx.name;
           scene.add(ctx.block);
         },
         ready_assign: assign({
@@ -348,7 +362,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           },
         }),
         near_action: (ctx, event) => {
-          ctx.x -= 20;
+          ctx.x -= 80;
 
           let object = new THREE.Object3D();
           object.position.x = ctx.x;
@@ -357,7 +371,7 @@ const createBlockMachine = (xIn, yIn, zIn) => {
           transform(ctx.block, object, ctx.speed);
         },
         far_action: (ctx, event) => {
-          ctx.x += 20;
+          ctx.x += 80;
 
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
@@ -399,15 +413,17 @@ function createGameSystem() {
     iframe: false,
     url: "https://stately.ai/viz?inspect",
   });
-  let blockMachine = createBlockMachine(800, -50, -50);
-  let blockMachine2 = createBlockMachine(800, 0, -50);
-  let blockMachine3 = createBlockMachine(800, 50, -50);
-  let blockMachine4 = createBlockMachine(800, -50, 0);
-  let blockMachine5 = createBlockMachine(800, 0, 0);
-  let blockMachine6 = createBlockMachine(800, 50, 0);
-  let blockMachine7 = createBlockMachine(800, -50, 50);
-  let blockMachine8 = createBlockMachine(800, 0, 50);
-  let blockMachine9 = createBlockMachine(800, 50, 50);
+  let blockMachines = [];
+
+  let ySet = [-50, 0, 50];
+  let k = 0;
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      blockMachines[k] = createBlockMachine("tile" + k, 800, ySet[j], ySet[i]);
+      k++;
+    }
+  }
+
   let cameraMachine = createMachine(
     {
       id: "camera_machine",
@@ -475,10 +491,6 @@ function createGameSystem() {
           activeHelper = cameraPerspectiveHelper;
         },
         live_action: (context, event) => {
-          console.log("live");
-          console.log("context", context);
-          console.log("event", event);
-
           cameraOrtho.visible = false;
           cameraOrthoHelper.visible = false;
           cameraPerspectiveHelper.visible = false;
@@ -493,40 +505,21 @@ function createGameSystem() {
     }
   );
 
-  // Invoked child machine
+  for (let i = 0; i < 9; i++) {
+    blockServices[i] = interpret(blockMachines[i], { devTools: true }).start();
+    blockMachines[i].config.context = {
+      ...blockMachines[i].config.context,
+      blockService: blockServices[i],
+    };
 
-  let boardMachine = createMachine({
-    predictableActionArguments: true,
-    id: "block_machine",
-    context: { height: 3, height: 3, origin: { x: 0, y: 0 }, blocks: [] },
-    initial: "ready",
-    states: {
-      ready: {
-        entry: ["board_init"],
-        on: {},
-      },
-    },
-    actions: {
-      board_init: (ctx, event) => {
-        //ref: spawn(todoMachine, `todo-${event.id}`),},
-        // add a new todoMachine actor with a unique name
-        // for(let x = 0; x < ctx.width; x++){
-        //   for(let y = 0; y < ctx.height; y++){
-        //   }
-        // }
-      },
-    },
-  });
+    emit.subscribe("tile" + i + ".hover", () => {
+      blockServices[i].send("SWAP");
+    });
+    emit.subscribe("tile" + i + ".unhover", () => {
+      blockServices[i].send("SWAP");
+    });
+  }
 
-  blockService = interpret(blockMachine, { devTools: true }).start();
-  blockService2 = interpret(blockMachine2, { devTools: true }).start();
-  blockService3 = interpret(blockMachine3, { devTools: true }).start();
-  blockService4 = interpret(blockMachine4, { devTools: true }).start();
-  blockService5 = interpret(blockMachine5, { devTools: true }).start();
-  blockService6 = interpret(blockMachine6, { devTools: true }).start();
-  blockService7 = interpret(blockMachine7, { devTools: true }).start();
-  blockService8 = interpret(blockMachine8, { devTools: true }).start();
-  blockService9 = interpret(blockMachine9, { devTools: true }).start();
   cameraService = interpret(cameraMachine, { devTools: true }).start();
   window.cameraService = cameraService;
 }
@@ -566,18 +559,3 @@ function doTimer(services, doLog, label) {
 
 init();
 animate();
-// doTimer(
-//   [
-//     blockService,
-//     blockService2,
-//     blockService3,
-//     blockService4,
-//     blockService5,
-//     blockService6,
-//     blockService7,
-//     blockService8,
-//     blockService9,
-//   ],
-//   true,
-//   "a"
-// );
