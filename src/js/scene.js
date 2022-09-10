@@ -27,6 +27,20 @@ let tiles = [];
 let theta = 0;
 let delta = 0.1;
 
+let textures = {
+  magenta3: "assets/magenta3.png",
+  magenta9: "assets/magenta9.png",
+  teal6: "assets/teal6.png",
+  purple3: "assets/purple3.png",
+  purple9: "assets/purple9.png",
+  pinkTile: "assets/pinktile.png", 
+  orangeTile: "assets/orangetile.png", 
+  blackTile: "assets/blacktile2.png", 
+  purpleTile: "assets/purpleTexture.png", 
+  tealTile: "assets/tealTexture.png", 
+  magentaTile: "assets/magentaTexture.png"
+}
+
 // allow mousepick
 let raycaster, INTERSECTED;
 
@@ -38,9 +52,9 @@ function init() {
 
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 2500);
-  camera.position.z = 2500;
-  cameraPerspective = new THREE.PerspectiveCamera(50, 1 * aspect, 150, 1500);
+  camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 5500);
+  camera.position.z = 3500;
+  cameraPerspective = new THREE.PerspectiveCamera(1500, 1 * aspect, 150, 200);
   cameraPerspectiveHelper = new THREE.CameraHelper(cameraPerspective);
 
   //camera visualizer - LineSegments
@@ -110,8 +124,6 @@ function addMouseHandlers() {
   moveMouse = new THREE.Vector2();
 
   document.addEventListener("pointermove", (event) => {
-    let vp = new Vector4();
-    renderer.getCurrentViewport(vp);
 
     moveMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     moveMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -120,7 +132,7 @@ function addMouseHandlers() {
     raycaster.setFromCamera(moveMouse, activeCamera);
     intersects = raycaster.intersectObjects(tiles, true);
     if (intersects.length > 0) {
-      console.log(intersects);
+      
       if (!currentTile) {
         currentTile = intersects[0].object;
         console.log("object:", intersects[0].object);
@@ -139,8 +151,8 @@ function addMouseHandlers() {
 
 function onWindowResize() {
   var bounding_rect = window.visualViewport;
-  SCREEN_WIDTH = bounding_rect.width - 25;
-  SCREEN_HEIGHT = bounding_rect.height - 25;
+  SCREEN_WIDTH = bounding_rect.width-25;
+  SCREEN_HEIGHT = bounding_rect.height-25;
   //SCREEN_WIDTH = window.innerWidth;
   //SCREEN_HEIGHT = window.innerHeight;
   aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
@@ -182,7 +194,7 @@ function animate() {
 function render() {
   //const r = Date.now() * 0.0005;
 
-  theta += delta;
+  //theta += delta;
   activeCamera.position.x = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.y = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.z = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
@@ -204,7 +216,7 @@ function createStarScape() {
   const geometry = new THREE.BufferGeometry();
   const vertices = [];
 
-  for (let i = 0; i < 50000; i++) {
+  for (let i = 0; i < 5000; i++) {
     vertices.push(THREE.MathUtils.randFloatSpread(2000)); // x
     vertices.push(THREE.MathUtils.randFloatSpread(2000)); // y
     vertices.push(THREE.MathUtils.randFloatSpread(2000)); // z
@@ -274,7 +286,7 @@ function onKeyDown(event) {
   }
 }
 
-const createBlockMachine = (nameIn, xIn, yIn, zIn) => {
+const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
   return createMachine(
     {
       id: "block_machine." + nameIn,
@@ -283,7 +295,8 @@ const createBlockMachine = (nameIn, xIn, yIn, zIn) => {
         x: xIn,
         y: yIn,
         z: zIn,
-        speed: 200,
+        type: typeIn,
+        speed: 1000,
         block: undefined,
         name: nameIn,
         count: 0,
@@ -349,8 +362,7 @@ const createBlockMachine = (nameIn, xIn, yIn, zIn) => {
         ready_assign: assign({
           block: () => {
             const textureLoader = new THREE.TextureLoader();
-            const texture = textureLoader.load("assets/blacktile.png");
-            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const material = new THREE.MeshBasicMaterial({ map: textureLoader.load(textures[typeIn]) });
 
             let block = new THREE.Mesh(
               new THREE.BoxGeometry(50, 50, 50, 5, 5, 5),
@@ -415,11 +427,16 @@ function createGameSystem() {
   });
   let blockMachines = [];
 
-  let ySet = [-50, 0, 50];
+  let ySet = [-250, -200, -150, -100, -50, 0, 50, 100, 150, 200, 250];
+  let types = ["teal6", "purple3", "magenta9"]
   let k = 0;
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      blockMachines[k] = createBlockMachine("tile" + k, 800, ySet[j], ySet[i]);
+  for (let i = 0; i < ySet.length; i++) {
+    for (let j = 0; j < ySet.length; j++) {
+      const border = 3;
+      let edge = (i < border || i > ySet.length-(border+1) || j < border || j > ySet.length-(border+1)) ? 1 : 0;
+      edge = (i%2==0 || j%2 == 0) ? 1 : 0;
+      edge = (i==5 && j==5) ? 2 : edge;
+      blockMachines[k] = createBlockMachine("tile" + k, types[edge], 800, ySet[j], ySet[i]);
       k++;
     }
   }
@@ -481,7 +498,7 @@ function createGameSystem() {
         perspective_action: (context, event) => {
           console.log("perspective");
 
-          cameraPerspective.fov = 15; //Math.sin(0.5);
+          cameraPerspective.fov = 45; //Math.sin(0.5);
           cameraPerspective.far = 1300;
           cameraPerspective.updateProjectionMatrix();
 
@@ -505,7 +522,7 @@ function createGameSystem() {
     }
   );
 
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < blockMachines.length; i++) {
     blockServices[i] = interpret(blockMachines[i], { devTools: true }).start();
     blockMachines[i].config.context = {
       ...blockMachines[i].config.context,
