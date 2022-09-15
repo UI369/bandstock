@@ -24,14 +24,14 @@ There are a few keymappings that change aspects of the 3D display.
 Pressing these keys send events to the XState machines - represented by cameraService and blockService. 
 
 cameraService valid event types:
-GO_ORTHO
-GO_PERSPECTIVE
-GO_LIVE
-GO_BACKSTAGE
+* GO_ORTHO
+* GO_PERSPECTIVE
+* GO_LIVE
+* GO_BACKSTAGE
 
 blockService valid event types:
-GO_NEAR
-GO_FAR
+* GO_NEAR
+* GO_FAR
 
 
 Testing and feature requests welcome.
