@@ -18,7 +18,7 @@ View app at localhost:1234
 
 Note, If you want to see live updating XState machine charts: 
 * be sure to allow bandstock to do "popups" in your browser, as state charts open in a new tab. 
-* This is a dev only feature and can be disabled with 
+* This is a dev only feature and can be disabled with #TODO: how to disable devtools? 
 
 There are a few keymappings that change aspects of the 3D display. 
 Pressing these keys send events to the XState machines - represented by cameraService and blockService. 
