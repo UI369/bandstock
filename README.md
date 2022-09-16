@@ -23,17 +23,6 @@ Note, If you want to see live updating XState machine charts:
 There are a few keymappings that change aspects of the 3D display. 
 Pressing these keys send events to the XState machines - represented by cameraService and blockService. 
 
-cameraService valid event types:
-* GO_ORTHO
-* GO_PERSPECTIVE
-* GO_LIVE
-* GO_BACKSTAGE
-
-blockService valid event types:
-* GO_NEAR
-* GO_FAR
-
-
 Testing and feature requests welcome.
 
 Active events:
@@ -64,6 +53,17 @@ Active events:
       blockService.send({ type: "GO_FAR" });
       break;
   }```
+
+cameraService valid event types:
+* GO_ORTHO
+* GO_PERSPECTIVE
+* GO_LIVE
+* GO_BACKSTAGE
+
+blockService valid event types:
+* GO_NEAR
+* GO_FAR
+
 
 
 
