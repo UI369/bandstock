@@ -52,7 +52,8 @@ Active events:
       console.log("sending GO_FAR");
       blockService.send({ type: "GO_FAR" });
       break;
-  }```
+  }
+```
 
 cameraService valid event types:
 * GO_ORTHO
