@@ -9,15 +9,17 @@ let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
 let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
 
+let container, stats, focalPoint;
+let scene, renderer;
+let mainCamera, backstageCamera, activeCamera;
+let mainCameraHelper, mainCameraRig, backstageCameraHelper, activeHelper;
+
 let emit = new EventEmitter();
-let container, stats, mesh;
+
 let blockServices = [];
 let blockMachines = [];
-let blockService, cameraService, boardService;
-let camera, scene, renderer;
-let cameraRig, activeCamera, activeHelper;
-let cameraPerspective, cameraOrtho;
-let cameraPerspectiveHelper, cameraOrthoHelper;
+let blockService, mainCameraService, boardService;
+
 let currentTile;
 let clock = new THREE.Clock();
 let clockDelta = 0;
@@ -48,14 +50,7 @@ const frustumSize = 600;
 
 function init() {
   init3DSetup();
-
-  addMouseHandlers();
-
   initGameSystem();
-
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("resize", onWindowResize);
-  onWindowResize();
 }
 
 function init3DSetup() {
@@ -64,34 +59,7 @@ function init3DSetup() {
 
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(80, 5 * aspect, 0.1, 5500);
-  camera.position.z = 3500;
-  cameraPerspective = new THREE.PerspectiveCamera(1500, 1 * aspect, 150, 200);
-  cameraPerspectiveHelper = new THREE.CameraHelper(cameraPerspective);
-
-  //camera visualizer - LineSegments
-  scene.add(cameraPerspectiveHelper);
-
-  //
-  cameraOrtho = new THREE.OrthographicCamera();
-  setOrthoFOV();
-
-  //the camera visualizer - LineSegments
-  cameraOrthoHelper = new THREE.CameraHelper(cameraOrtho);
-  scene.add(cameraOrthoHelper);
-
-  //
-  activeCamera = cameraPerspective;
-  activeHelper = cameraPerspectiveHelper;
-
-  // counteract different front orientation of cameras vs rig
-  cameraOrtho.rotation.y = Math.PI;
-  cameraPerspective.rotation.y = Math.PI;
-
-  cameraRig = new THREE.Group();
-  cameraRig.add(cameraPerspective);
-  cameraRig.add(cameraOrtho);
-  scene.add(cameraRig);
+  initCameras();
 
   // add light
   var light = new THREE.PointLight(0xffffff, 10000);
@@ -99,13 +67,13 @@ function init3DSetup() {
   scene.add(light);
 
   //
-  mesh = new THREE.Mesh(
+  focalPoint = new THREE.Mesh(
     new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
     new THREE.MeshBasicMaterial({ color: 0xffff00 })
   );
-  mesh.position.x = 800; // * Math.cos(r);
-  mesh.visible = false;
-  scene.add(mesh);
+  focalPoint.position.z = -700;
+  focalPoint.visible = false;
+  scene.add(focalPoint);
 
   createStarScape();
 
@@ -119,24 +87,54 @@ function init3DSetup() {
   //
   stats = new Stats();
   container.appendChild(stats.dom);
+
+  window.addEventListener("resize", onWindowResize);
+  onWindowResize();
+}
+
+function initCameras() {
+  mainCamera = new THREE.PerspectiveCamera(45, 1 * aspect, 150, 1300);
+
+  mainCameraHelper = new THREE.CameraHelper(mainCamera);
+  scene.add(mainCameraHelper);
+
+  activeCamera = mainCamera;
+  activeHelper = mainCameraHelper;
+
+  backstageCamera = new THREE.PerspectiveCamera(1500, 1 * aspect, 0, 10000);
+  backstageCameraHelper = new THREE.CameraHelper(backstageCamera);
+
+  // counteract different front orientation of mainCameras vs rig
+  mainCamera.rotation.y = -Math.PI;
+  //mainCamera.rotation.x = Math.PI * 2;
+  //mainCamera.rotation.z = Math.PI;
+  mainCamera.updateProjectionMatrix();
+  mainCameraRig = new THREE.Group();
+  mainCameraRig.add(mainCamera);
+
+  scene.add(mainCameraRig);
+  scene.add(backstageCamera);
+
+  console.log("mainCamera.position", mainCamera.position);
+  console.log("backstageCamera.position", backstageCamera.position);
 }
 
 function initGameSystem() {
   console.log("initGameSystem");
-  // inspect({
-  //   iframe: false,
-  //   url: "https://stately.ai/viz?inspect",
-  // });
 
+  addMouseHandlers();
   initBlockMachines();
   initServices();
 
   window.blockServices = blockServices;
-  window.cameraService = cameraService;
+  window.mainCameraService = mainCameraService;
   window.boardService = boardService;
+
+  window.addEventListener("keydown", onKeyDown);
 }
 
 const initBlockMachines = () => {
+  console.log("initBlockMachines");
   //Create (ySet.length ^ 2) blockMachines - incomprehensible algorithm determining the pattern of cubes.
   let ySet = [-250, -200, -150, -100, -50, 0, 50, 100, 150, 200, 250];
   let types = ["teal6", "purple3", "magenta9"];
@@ -153,29 +151,32 @@ const initBlockMachines = () => {
           : 0;
       edge = i % 2 == 0 || j % 2 == 0 ? 1 : 0;
       edge = i == 5 && j == 5 ? 2 : edge;
+      console.log({ x: 800, y: ySet[j], z: ySet[i] });
       blockMachines[k] = createBlockMachine(
         "tile" + k,
         types[edge],
-        800,
         ySet[j],
-        ySet[i]
+        ySet[i],
+        focalPoint.position.z
       );
 
       k++;
     }
   }
+  console.log("end initBlock blockMachines[0]", blockMachines[0]);
 };
 
 const initServices = () => {
+  console.log("initServices");
   //create blockService => Wire them in to blockMachine => Wire them into userData of 3D block
 
   for (let i = 0; i < blockMachines.length; i++) {
     blockServices[i] = interpret(blockMachines[i], { devTools: true }).start();
 
-    blockMachines[i].config.context = {
-      ...blockMachines[i].config.context,
-      blockService: blockServices[i],
-    };
+    // blockMachines[i].config.context = {
+    //   ...blockMachines[i].config.context,
+    //   blockService: blockServices[i],
+    // };
 
     emit.subscribe("tile" + i + ".hover", () => {
       blockServices[i].send("SWAP");
@@ -186,7 +187,9 @@ const initServices = () => {
     });
   }
 
-  cameraService = interpret(createCameraMachine(), { devTools: true }).start();
+  mainCameraService = interpret(createCameraMachine(), {
+    devTools: true,
+  }).start();
 
   boardService = interpret(
     createBoardMachine("board1", 0, 0, 0, blockMachines),
@@ -206,11 +209,10 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
         y: yIn,
         z: zIn,
         type: typeIn,
+        note: "note",
         speed: 2000,
         block: undefined,
-        blockService: undefined,
         name: nameIn,
-        count: 0,
       },
       initial: "ready",
       states: {
@@ -247,6 +249,9 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           entry: ["presenting_assign", "presenting_action"],
           on: {
             GO_AWAY: "far",
+            PRESENT: {
+              target: "presenting",
+            },
           },
         },
         right: {
@@ -276,13 +281,15 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           ctx.block.position.x = ctx.x;
           ctx.block.position.y = ctx.y;
           ctx.block.position.z = ctx.z;
-          ctx.block.userData.blockService = ctx.blockService;
+          //ctx.block.userData.blockService = ctx.blockService;
           ctx.block.userData.name = ctx.name;
-
-          console.log("block init", ctx);
+          tiles.push(ctx.block);
           scene.add(ctx.block);
         },
         ready_assign: assign({
+          note: () => {
+            return "note!";
+          },
           block: () => {
             //create the 3D block
             const textureLoader = new THREE.TextureLoader();
@@ -295,14 +302,12 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
               material
             );
             block.userData.type = "tile";
-
-            tiles.push(block);
-
+            console.log(blockServices[0]);
             return block;
           },
         }),
         near_action: (ctx, event) => {
-          ctx.x -= 80;
+          ctx.z += 80;
 
           let object = new THREE.Object3D();
           object.position.x = ctx.x;
@@ -311,7 +316,7 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           transform(ctx.block, object, ctx.speed);
         },
         far_action: (ctx, event) => {
-          ctx.x += 80;
+          ctx.z -= 80;
 
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
@@ -319,10 +324,11 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           object.position.z = ctx.z;
           transform(ctx.block, object, ctx.speed);
         },
-        presenting_assign: (ctx, event) => {
-          ctx.x = event.present_to.position.x;
-          ctx.y = event.present_to.position.y;
-          ctx.z = event.present_to.position.z;
+        presenting_assign: (ctx, e) => {
+          console.log(e.event);
+          ctx.x = e.event.present_to.position.x;
+          ctx.y = e.event.present_to.position.y;
+          ctx.z = e.event.present_to.position.z;
         },
         presenting_action: (ctx, event) => {
           const object = new THREE.Object3D();
@@ -407,9 +413,14 @@ const createBoardMachine = (
       actions: {
         ready_action: (ctx, event) => {},
         present_next: (ctx, event) => {
-          blockMachines[
+          console.log(
+            "blockMachines[" + ctx.next.x * ctx.next.y + "]",
+            blockMachines[ctx.next.x * ctx.next.y].config.context,
+            blockServices[ctx.next.x * ctx.next.y]._state
+          );
+          blockServices[
             ctx.next.x * ctx.next.y
-          ]._context.block.userData.blockService.send("PRESENT");
+          ]._state.context.block.userData.blockService.send("PRESENT");
           ctx.next = { x: ctx.next.x, y: ctx.next.y + 1 };
         },
       },
@@ -420,11 +431,11 @@ const createBoardMachine = (
 const createCameraMachine = () => {
   return createMachine(
     {
-      id: "camera_machine",
+      id: "mainCamera_machine",
+      predictableActionArguments: true,
       initial: "live",
       states: {
         live: {
-          entry: "live_action",
           initial: "perspective",
           on: {
             GO_BACKSTAGE: {
@@ -433,20 +444,7 @@ const createCameraMachine = () => {
           },
           states: {
             perspective: {
-              entry: "perspective_action",
-              on: {
-                GO_ORTHO: {
-                  target: "ortho",
-                },
-              },
-            },
-            ortho: {
-              entry: "ortho_action",
-              on: {
-                GO_PERSPECTIVE: {
-                  target: "perspective",
-                },
-              },
+              entry: "live_action",
             },
           },
         },
@@ -462,38 +460,19 @@ const createCameraMachine = () => {
     },
     {
       actions: {
-        ortho_action: (context, event) => {
-          console.log("ortho");
-          cameraOrtho.far = 1300;
-          cameraOrtho.updateProjectionMatrix();
-
-          cameraOrthoHelper.update();
-
-          activeCamera = cameraOrtho;
-          activeHelper = cameraOrthoHelper;
-        },
-        perspective_action: (context, event) => {
-          console.log("perspective");
-
-          cameraPerspective.fov = 45; //Math.sin(0.5);
-          cameraPerspective.far = 1300;
-          cameraPerspective.updateProjectionMatrix();
-
-          cameraPerspectiveHelper.update();
-
-          activeCamera = cameraPerspective;
-          activeHelper = cameraPerspectiveHelper;
-        },
         live_action: (context, event) => {
-          cameraOrtho.visible = false;
-          cameraOrthoHelper.visible = false;
-          cameraPerspectiveHelper.visible = false;
-          cameraOrthoHelper.visible = false;
+          console.log("perspective");
+          mainCamera.updateProjectionMatrix();
+          mainCameraHelper.update();
+          activeCamera = mainCamera;
+          activeHelper = mainCameraHelper;
+          activeHelper.visible = false;
         },
         backstage_action: (context, event) => {
           console.log("backstage");
           activeHelper.visible = true;
-          activeCamera = camera;
+          activeCamera = backstageCamera;
+          activeHelper = backstageCameraHelper;
         },
       },
     }
@@ -503,14 +482,13 @@ const createCameraMachine = () => {
 /*********************/
 /* UTILITY FUNCTIONS */
 /*********************/
-
 function addMouseHandlers() {
   let clickMouse = new THREE.Vector2();
   let moveMouse = new THREE.Vector2();
 
   document.addEventListener("pointermove", (event) => {
-    moveMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    moveMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    moveMouse.x = (event.clientX / SCREEN_WIDTH) * 2 - 1;
+    moveMouse.y = -(event.clientY / SCREEN_HEIGHT) * 2 + 1;
 
     let raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(moveMouse, activeCamera);
@@ -538,29 +516,17 @@ function addMouseHandlers() {
 
 function onWindowResize() {
   var bounding_rect = window.visualViewport;
-  SCREEN_WIDTH = bounding_rect.width - 25;
-  SCREEN_HEIGHT = bounding_rect.height - 25;
+  //Removing the -20 will fix the offset issue, but adds scrollbars. TODO: Why?
+  SCREEN_WIDTH = bounding_rect.width - 20;
+  SCREEN_HEIGHT = bounding_rect.height - 20;
   //SCREEN_WIDTH = window.innerWidth;
   //SCREEN_HEIGHT = window.innerHeight;
   aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
 
   renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-  camera.aspect = 1 * aspect;
-  camera.updateProjectionMatrix();
-
-  cameraPerspective.aspect = 1 * aspect;
-  cameraPerspective.updateProjectionMatrix();
-
-  setOrthoFOV();
-}
-
-function setOrthoFOV() {
-  cameraOrtho.left = (-1 * frustumSize * aspect) / 8;
-  cameraOrtho.right = (1 * frustumSize * aspect) / 8;
-  cameraOrtho.top = frustumSize / 8;
-  cameraOrtho.bottom = -frustumSize / 8;
-  cameraOrtho.updateProjectionMatrix();
+  activeCamera.aspect = 1 * aspect;
+  activeCamera.updateProjectionMatrix();
 }
 
 function animate() {
@@ -581,16 +547,21 @@ function animate() {
 function render() {
   //const r = Date.now() * 0.0005;
 
-  //theta += delta;
+  //Wibble wobble camera thing
+  /*theta += delta;
   activeCamera.position.x = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.y = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.z = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
-  activeCamera.lookAt(mesh.position);
+  activeCamera.lookAt(focalPoint.position);
   if (theta > 5) {
     delta = -delta;
-  }
+  }*/
 
-  cameraRig.lookAt(mesh.position);
+  theta += delta;
+  //activeCamera.rotation.x = Math.sin(THREE.MathUtils.degToRad(theta));
+  //activeCamera.rotation.z = activeCamera.rotation.z + 0.01;
+
+  mainCameraRig.lookAt(focalPoint.position);
 
   //render from current activeCamera
   renderer.clear();
@@ -622,6 +593,12 @@ function createStarScape() {
 }
 
 function transform(object, target, duration) {
+  let distance = object.position.distanceTo(target.position);
+  console.log("distance", distance);
+
+  // let duration = speed / distance;
+  console.log("duration", duration);
+
   new Tween(object.position)
     .to(
       { x: target.position.x, y: target.position.y, z: target.position.z },
@@ -646,21 +623,17 @@ function transform(object, target, duration) {
 
 function onKeyDown(event) {
   switch (event.keyCode) {
-    case 79 /*O*/:
-      console.log("go_ortho");
-      cameraService.send({ type: "GO_ORTHO" });
-      break;
     case 80 /*P*/:
       console.log("go_perspective");
-      cameraService.send({ type: "GO_PERSPECTIVE" });
+      mainCameraService.send({ type: "GO_PERSPECTIVE" });
       break;
     case 76 /*L*/:
       console.log("go_live");
-      cameraService.send({ type: "GO_LIVE" });
+      mainCameraService.send({ type: "GO_LIVE" });
       break;
-    case 59 /*;*/:
+    case 75 /*K*/:
       console.log("go_backstage");
-      cameraService.send({ type: "GO_BACKSTAGE" });
+      mainCameraService.send({ type: "GO_BACKSTAGE" });
       break;
     case 78 /*N*/:
       console.log("sending SWAP");
@@ -672,7 +645,19 @@ function onKeyDown(event) {
       break;
     case 65 /*A*/:
       console.log("sending PRESENT");
-      boardService.send({ type: "PRESENT_NEXT" });
+      blockServices[0].send({
+        type: "PRESENT",
+        event: {
+          present_to: {
+            position: {
+              x: activeCamera.position.x,
+              y: activeCamera.position.y,
+              z: activeCamera.position.z - 200,
+            },
+          },
+        },
+      });
+      //boardService.send({ type: "PRESENT_NEXT" });
       break;
   }
 }
@@ -708,6 +693,33 @@ function doTimer(services, doLog, label) {
   );
 
   t1.start();
+}
+
+function updateCamera() {
+  mainCamera.updateProjectionMatrix();
+}
+
+class MinMaxGUIHelper {
+  constructor(obj, minProp, maxProp, minDif) {
+    this.obj = obj;
+    this.minProp = minProp;
+    this.maxProp = maxProp;
+    this.minDif = minDif;
+  }
+  get min() {
+    return this.obj[this.minProp];
+  }
+  set min(v) {
+    this.obj[this.minProp] = v;
+    this.obj[this.maxProp] = Math.max(this.obj[this.maxProp], v + this.minDif);
+  }
+  get max() {
+    return this.obj[this.maxProp];
+  }
+  set max(v) {
+    this.obj[this.maxProp] = v;
+    this.min = this.min; // this will call the min setter
+  }
 }
 
 //Start the show
