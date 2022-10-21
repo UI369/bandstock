@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Tween, Easing, update } from "@tweenjs/tween.js";
 import * as Stats from "stats.js";
 import { timer } from "/src/util/timer.js";
-import { assign, createMachine, interpret } from "xstate";
+import { assign, createMachine, interpret, send, spawn } from "xstate";
 import { EventEmitter } from "/src/util/event_emitter.ts";
 
 let SCREEN_WIDTH = window.innerWidth;
@@ -151,7 +151,6 @@ const initBlockMachines = () => {
           : 0;
       edge = i % 2 == 0 || j % 2 == 0 ? 1 : 0;
       edge = i == 5 && j == 5 ? 2 : edge;
-      console.log({ x: 800, y: ySet[j], z: ySet[i] });
       blockMachines[k] = createBlockMachine(
         "tile" + k,
         types[edge],
@@ -170,22 +169,22 @@ const initServices = () => {
   console.log("initServices");
   //create blockService => Wire them in to blockMachine => Wire them into userData of 3D block
 
-  for (let i = 0; i < blockMachines.length; i++) {
-    blockServices[i] = interpret(blockMachines[i], { devTools: true }).start();
+  // for (let i = 0; i < blockMachines.length; i++) {
+  //   blockServices[i] = interpret(blockMachines[i], { devTools: true }).start();
 
-    // blockMachines[i].config.context = {
-    //   ...blockMachines[i].config.context,
-    //   blockService: blockServices[i],
-    // };
+  //   // blockMachines[i].config.context = {
+  //   //   ...blockMachines[i].config.context,
+  //   //   blockService: blockServices[i],
+  //   // };
 
-    emit.subscribe("tile" + i + ".hover", () => {
-      blockServices[i].send("SWAP");
-    });
+  //   emit.subscribe("tile" + i + ".hover", () => {
+  //     blockServices[i].send("SWAP");
+  //   });
 
-    emit.subscribe("tile" + i + ".unhover", () => {
-      blockServices[i].send("SWAP");
-    });
-  }
+  //   emit.subscribe("tile" + i + ".unhover", () => {
+  //     blockServices[i].send("SWAP");
+  //   });
+  // }
 
   mainCameraService = interpret(createCameraMachine(), {
     devTools: true,
@@ -197,14 +196,17 @@ const initServices = () => {
       devTools: true,
     }
   ).start();
+
+  console.log("boardService._state", boardService._state);
 };
 
-const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
+const createBlockMachine = (idIn, typeIn, xIn, yIn, zIn) => {
   return createMachine(
     {
-      id: "block_machine." + nameIn,
+      id: "block_machine." + idIn,
       predictableActionArguments: true,
       context: {
+        id: idIn,
         x: xIn,
         y: yIn,
         z: zIn,
@@ -212,7 +214,6 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
         note: "note",
         speed: 2000,
         block: undefined,
-        name: nameIn,
       },
       initial: "ready",
       states: {
@@ -254,24 +255,6 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
             },
           },
         },
-        right: {
-          entry: ["right_action"],
-          on: {
-            SWAP: {
-              target: "left",
-            },
-          },
-          invoke: [],
-        },
-        left: {
-          entry: ["left_action"],
-          on: {
-            SWAP: {
-              target: "right",
-            },
-          },
-          invoke: [],
-        },
       },
     },
     {
@@ -284,6 +267,7 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           //ctx.block.userData.blockService = ctx.blockService;
           ctx.block.userData.name = ctx.name;
           tiles.push(ctx.block);
+          console.log("adding block to scene: " + ctx.block);
           scene.add(ctx.block);
         },
         ready_assign: assign({
@@ -302,7 +286,6 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
               material
             );
             block.userData.type = "tile";
-            console.log(blockServices[0]);
             return block;
           },
         }),
@@ -325,46 +308,20 @@ const createBlockMachine = (nameIn, typeIn, xIn, yIn, zIn) => {
           transform(ctx.block, object, ctx.speed);
         },
         presenting_assign: (ctx, e) => {
+          console.log("block presenting_assign");
           console.log(e.event);
           ctx.x = e.event.present_to.position.x;
           ctx.y = e.event.present_to.position.y;
           ctx.z = e.event.present_to.position.z;
         },
         presenting_action: (ctx, event) => {
+          console.log("block presenting_action");
           const object = new THREE.Object3D();
           object.position.x = ctx.x;
           object.position.y = ctx.y;
           object.position.z = ctx.z;
           transform(ctx.block, object, ctx.speed);
         },
-        right_action: (ctx, event) => {
-          ctx.y += 80;
-
-          const object = new THREE.Object3D();
-          object.position.x = ctx.x;
-          object.position.y = ctx.y;
-          object.position.z = ctx.z;
-          transform(ctx.block, object, ctx.speed);
-        },
-        left_action: (ctx, event) => {
-          ctx.y += -80;
-
-          const object = new THREE.Object3D();
-          object.position.x = ctx.x;
-          object.position.y = ctx.y;
-          object.position.z = ctx.z;
-          transform(ctx.block, object, ctx.speed);
-        },
-        right_assign: assign({
-          y: (ctx, event) => {
-            return ctx.y + 80;
-          },
-        }),
-        left_assign: assign({
-          y: (ctx, event) => {
-            return ctx.y - 8;
-          },
-        }),
       },
     }
   );
@@ -387,12 +344,12 @@ const createBoardMachine = (
         macroZ: macroZIn,
         blockMachines: blockMachinesIn,
         name: nameIn,
-        next: { x: 0, y: 0 },
+        next: 0,
       },
       initial: "ready",
       states: {
         ready: {
-          entry: "ready_action",
+          entry: ["ready_action", "ready_assign"],
           on: {
             PRESENT_NEXT: {
               target: "present",
@@ -400,7 +357,7 @@ const createBoardMachine = (
           },
         },
         present: {
-          entry: "present_next",
+          entry: ["present_next", "present_assign"],
           on: {
             PRESENT_NEXT: {
               target: "present",
@@ -411,18 +368,59 @@ const createBoardMachine = (
     },
     {
       actions: {
-        ready_action: (ctx, event) => {},
-        present_next: (ctx, event) => {
-          console.log(
-            "blockMachines[" + ctx.next.x * ctx.next.y + "]",
-            blockMachines[ctx.next.x * ctx.next.y].config.context,
-            blockServices[ctx.next.x * ctx.next.y]._state
-          );
-          blockServices[
-            ctx.next.x * ctx.next.y
-          ]._state.context.block.userData.blockService.send("PRESENT");
-          ctx.next = { x: ctx.next.x, y: ctx.next.y + 1 };
+        ready_action: (ctx, event) => {
+          console.log("ready_action", ctx);
         },
+        ready_assign: assign(() => {
+          const blocks = Array.from({ length: 121 }).map((_, i) =>
+            spawn(
+              createBlockMachine(
+                `block-${i}`,
+                "magenta3",
+                focalPoint.position.x,
+                focalPoint.position.y,
+                focalPoint.position.z
+              ),
+              {
+                name: `cell-${i}`,
+              }
+            )
+          );
+
+          const actors = blocks.reduce((all, curr, i) => {
+            return { ...all, [`block-${i}`]: curr };
+          }, {});
+
+          return actors;
+        }),
+        present_next: ((ctx, event) => {
+          console.log("board present_next", ctx);
+          //let nxt = ctx.next;
+          return send(
+            {
+              type: "PRESENT",
+              event: {
+                present_to: {
+                  position: {
+                    x: activeCamera.position.x,
+                    y: activeCamera.position.y,
+                    z: activeCamera.position.z - 200,
+                  },
+                },
+              },
+            },
+            { to: "blockMachine.tile0" }
+          );
+        })(),
+        present_assign: assign({
+          next: (ctx, e) => {
+            console.log("board present_assign");
+            console.log("ctx", ctx);
+            let next = ctx.next < invokes.length ? ctx.next + 1 : 0;
+            console.log("next", next);
+            return next;
+          },
+        }),
       },
     }
   );
@@ -594,10 +592,6 @@ function createStarScape() {
 
 function transform(object, target, duration) {
   let distance = object.position.distanceTo(target.position);
-  console.log("distance", distance);
-
-  // let duration = speed / distance;
-  console.log("duration", duration);
 
   new Tween(object.position)
     .to(
@@ -645,19 +639,19 @@ function onKeyDown(event) {
       break;
     case 65 /*A*/:
       console.log("sending PRESENT");
-      blockServices[0].send({
-        type: "PRESENT",
-        event: {
-          present_to: {
-            position: {
-              x: activeCamera.position.x,
-              y: activeCamera.position.y,
-              z: activeCamera.position.z - 200,
-            },
-          },
-        },
-      });
-      //boardService.send({ type: "PRESENT_NEXT" });
+      // blockServices[0].send({
+      //   type: "PRESENT",
+      //   event: {
+      //     present_to: {
+      //       position: {
+      //         x: activeCamera.position.x,
+      //         y: activeCamera.position.y,
+      //         z: activeCamera.position.z - 200,
+      //       },
+      //     },
+      //   },
+      // });
+      boardService.send({ type: "PRESENT_NEXT" });
       break;
   }
 }
