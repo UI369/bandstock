@@ -4,6 +4,7 @@ import * as Stats from "stats.js";
 import { timer } from "/src/util/timer.js";
 import { assign, createMachine, interpret, send, spawn } from "xstate";
 import { EventEmitter } from "/src/util/event_emitter.ts";
+import { BlockMaker } from "/src/data/blocks.ts";
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -15,6 +16,7 @@ let mainCamera, backstageCamera, activeCamera;
 let mainCameraHelper, mainCameraRig, backstageCameraHelper, activeHelper;
 
 let emit = new EventEmitter();
+let blockMaker = new BlockMaker();
 
 let blockServices = [];
 let blockMachines = [];
@@ -28,6 +30,8 @@ let framerate = 1 / 30;
 let tiles = [];
 let theta = 0;
 let delta = 0.1;
+
+let blockData = blockMaker.makeBlocks();
 
 let textures = {
   magenta3: "/src/assets/magenta3.png",
@@ -190,12 +194,9 @@ const initServices = () => {
     devTools: true,
   }).start();
 
-  boardService = interpret(
-    createBoardMachine("board1", 0, 0, 0, blockMachines),
-    {
-      devTools: true,
-    }
-  ).start();
+  boardService = interpret(createBoardMachine("board1", 0, 0, 0, blockData), {
+    devTools: true,
+  }).start();
 
   console.log("boardService._state", boardService._state);
 };
@@ -332,7 +333,7 @@ const createBoardMachine = (
   macroXIn,
   macroYIn,
   macroZIn,
-  blockMachinesIn
+  blockDataIn
 ) => {
   return createMachine(
     {
@@ -342,8 +343,9 @@ const createBoardMachine = (
         macroX: macroXIn,
         macroY: macroYIn,
         macroZ: macroZIn,
-        blockMachines: blockMachinesIn,
+        blockData: blockDataIn,
         name: nameIn,
+        blockSize: 50,
         next: 0,
       },
       initial: "ready",
@@ -371,21 +373,34 @@ const createBoardMachine = (
         ready_action: (ctx, event) => {
           console.log("ready_action", ctx);
         },
-        ready_assign: assign(() => {
-          const blocks = Array.from({ length: 121 }).map((_, i) =>
+        ready_assign: assign((ctx) => {
+          // const blocks = Array.from({ length: 121 }).map((_, i) =>
+          //   spawn(
+          //     createBlockMachine(
+          //       `block-${i}`,
+          //       "magenta3",
+          //       focalPoint.position.x,
+          //       focalPoint.position.y,
+          //       focalPoint.position.z
+          //     ),
+          //     {
+          //       name: `cell-${i}`,
+          //     }
+          //   )
+          // );
+
+          const blocks = ctx.blockData.map((element, _) => {
             spawn(
               createBlockMachine(
-                `block-${i}`,
+                element.name,
                 "magenta3",
-                focalPoint.position.x,
-                focalPoint.position.y,
-                focalPoint.position.z
-              ),
-              {
-                name: `cell-${i}`,
-              }
-            )
-          );
+                focalPoint.position.x + element.x * ctx.blockSize,
+                focalPoint.position.y + element.y * ctx.blockSize,
+                focalPoint.position.z + element.z * ctx.blockSize
+              )
+            );
+          });
+          console.log("blocks", blocks);
 
           const actors = blocks.reduce((all, curr, i) => {
             return { ...all, [`block-${i}`]: curr };
