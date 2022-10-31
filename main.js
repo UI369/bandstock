@@ -97,7 +97,7 @@ function init3DSetup() {
 }
 
 function initCameras() {
-  mainCamera = new THREE.PerspectiveCamera(45, 1 * aspect, 150, 1300);
+  mainCamera = new THREE.PerspectiveCamera(45, 1 * aspect, 1, 1300);
 
   mainCameraHelper = new THREE.CameraHelper(mainCamera);
   scene.add(mainCameraHelper);
@@ -127,7 +127,7 @@ function initGameSystem() {
   console.log("initGameSystem");
 
   addMouseHandlers();
-  initBlockMachines();
+  //initBlockMachines();
   initServices();
 
   window.blockServices = blockServices;
@@ -344,6 +344,7 @@ const createBoardMachine = (
         macroY: macroYIn,
         macroZ: macroZIn,
         blockData: blockDataIn,
+        blockScript: blockMaker.getBlockScript(),
         name: nameIn,
         blockSize: 50,
         next: 0,
@@ -351,7 +352,7 @@ const createBoardMachine = (
       initial: "ready",
       states: {
         ready: {
-          entry: ["ready_action", "ready_assign"],
+          entry: ["ready_action", "ready_assign", "ready_test"],
           on: {
             PRESENT_NEXT: {
               target: "present",
@@ -359,7 +360,7 @@ const createBoardMachine = (
           },
         },
         present: {
-          entry: ["present_next", "present_assign"],
+          entry: ["unpresent_last", "present_assign", "present_next"],
           on: {
             PRESENT_NEXT: {
               target: "present",
@@ -370,6 +371,9 @@ const createBoardMachine = (
     },
     {
       actions: {
+        ready_test: (ctx, e) => {
+          console.log("ctx", ctx.blockScript.script[ctx.blockScript.index]);
+        },
         ready_action: (ctx, event) => {
           console.log("ready_action", ctx);
         },
@@ -389,16 +393,17 @@ const createBoardMachine = (
           //   )
           // );
 
+          console.log("ready_assign", ctx);
           const blocks = ctx.blockData.map((element, _) => {
-            spawn(
-              createBlockMachine(
-                element.name,
-                "magenta3",
-                focalPoint.position.x + element.x * ctx.blockSize,
-                focalPoint.position.y + element.y * ctx.blockSize,
-                focalPoint.position.z + element.z * ctx.blockSize
-              )
+            let block = createBlockMachine(
+              element.name,
+              element.c,
+              focalPoint.position.x + element.x * ctx.blockSize,
+              focalPoint.position.y + element.y * ctx.blockSize,
+              focalPoint.position.z + element.z * ctx.blockSize
             );
+            spawn(block, { name: element.name });
+            return block;
           });
           console.log("blocks", blocks);
 
@@ -406,12 +411,34 @@ const createBoardMachine = (
             return { ...all, [`block-${i}`]: curr };
           }, {});
 
+          console.log("actors", actors);
           return actors;
         }),
-        present_next: ((ctx, event) => {
-          console.log("board present_next", ctx);
+        unpresent_last: (() => {
+          let s = send(
+            (ctx, event) => ({
+              type: "PRESENT",
+              event: {
+                present_to: {
+                  position: {
+                    x: ctx[ctx.blockScript.script[ctx.blockScript.index]]
+                      ._context.x,
+                    y: ctx[ctx.blockScript.script[ctx.blockScript.index]]
+                      ._context.y,
+                    z: ctx[ctx.blockScript.script[ctx.blockScript.index]]
+                      ._context.z,
+                  },
+                },
+              },
+            }),
+            { to: (ctx) => ctx.actor }
+          );
+          return s;
+        })(),
+        present_next: (() => {
+          console.log("board present_next");
           //let nxt = ctx.next;
-          return send(
+          let s = send(
             {
               type: "PRESENT",
               event: {
@@ -419,21 +446,24 @@ const createBoardMachine = (
                   position: {
                     x: activeCamera.position.x,
                     y: activeCamera.position.y,
-                    z: activeCamera.position.z - 200,
+                    z: activeCamera.position.z - 400,
                   },
                 },
               },
             },
-            { to: "blockMachine.tile0" }
+            { to: (ctx) => ctx.actor }
           );
+          return s;
         })(),
         present_assign: assign({
-          next: (ctx, e) => {
-            console.log("board present_assign");
-            console.log("ctx", ctx);
-            let next = ctx.next < invokes.length ? ctx.next + 1 : 0;
-            console.log("next", next);
-            return next;
+          actor: (ctx, e) => {
+            console.log("ctx.blockScript.script[0]", ctx.blockScript.script[0]);
+            let nextBlock = ctx.blockScript.script[ctx.blockScript.index];
+            ctx.blockScript.index = ctx.blockScript.index + 1;
+            if (ctx.blockScript.index >= ctx.blockScript.script.length) {
+              ctx.blockScript.index = 0;
+            }
+            return nextBlock;
           },
         }),
       },
