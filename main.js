@@ -5,6 +5,7 @@ import { timer } from "/src/util/timer.js";
 import { assign, createMachine, interpret, send, spawn } from "xstate";
 import { EventEmitter } from "/src/util/event_emitter.ts";
 import { BlockMaker } from "/src/data/blocks.ts";
+import * as ETHERS from "ethers"
 
 let SCREEN_WIDTH = window.innerWidth;
 let SCREEN_HEIGHT = window.innerHeight;
@@ -33,18 +34,15 @@ let delta = 0.1;
 
 let blockData = blockMaker.makeBlocks();
 
+let requestAccounts = [];
+let provider = new ETHERS.providers.Web3Provider(window.ethereum)
+
+const abi = [{"inputs":[],"name":"CANNOT_APPROVE_SELF","type":"error"},{"inputs":[],"name":"CANT_BE_SMALLER_THAN_SUPPLY","type":"error"},{"inputs":[],"name":"CANT_EXTEND_NON_EXPIRING_KEY","type":"error"},{"inputs":[],"name":"GAS_REFUND_FAILED","type":"error"},{"inputs":[],"name":"INSUFFICIENT_ERC20_VALUE","type":"error"},{"inputs":[],"name":"INSUFFICIENT_VALUE","type":"error"},{"inputs":[],"name":"INVALID_ADDRESS","type":"error"},{"inputs":[{"internalType":"uint8","name":"hookIndex","type":"uint8"}],"name":"INVALID_HOOK","type":"error"},{"inputs":[],"name":"INVALID_LENGTH","type":"error"},{"inputs":[],"name":"INVALID_TOKEN","type":"error"},{"inputs":[],"name":"KEY_NOT_VALID","type":"error"},{"inputs":[],"name":"KEY_TRANSFERS_DISABLED","type":"error"},{"inputs":[],"name":"LOCK_HAS_CHANGED","type":"error"},{"inputs":[],"name":"LOCK_SOLD_OUT","type":"error"},{"inputs":[],"name":"MAX_KEYS_REACHED","type":"error"},{"inputs":[],"name":"MIGRATION_REQUIRED","type":"error"},{"inputs":[],"name":"NON_COMPLIANT_ERC721_RECEIVER","type":"error"},{"inputs":[],"name":"NON_RENEWABLE_LOCK","type":"error"},{"inputs":[],"name":"NOT_ENOUGH_FUNDS","type":"error"},{"inputs":[],"name":"NOT_ENOUGH_TIME","type":"error"},{"inputs":[],"name":"NOT_READY_FOR_RENEWAL","type":"error"},{"inputs":[],"name":"NO_SUCH_KEY","type":"error"},{"inputs":[],"name":"NULL_VALUE","type":"error"},{"inputs":[],"name":"ONLY_KEY_MANAGER_OR_APPROVED","type":"error"},{"inputs":[],"name":"ONLY_LOCK_MANAGER","type":"error"},{"inputs":[],"name":"ONLY_LOCK_MANAGER_OR_KEY_GRANTER","type":"error"},{"inputs":[],"name":"OUT_OF_RANGE","type":"error"},{"inputs":[],"name":"OWNER_CANT_BE_ADDRESS_ZERO","type":"error"},{"inputs":[],"name":"SCHEMA_VERSION_NOT_CORRECT","type":"error"},{"inputs":[],"name":"TRANSFER_TO_SELF","type":"error"},{"inputs":[],"name":"UNAUTHORIZED","type":"error"},{"inputs":[],"name":"UNAUTHORIZED_KEY_MANAGER_UPDATE","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"sendTo","type":"address"},{"indexed":false,"internalType":"uint256","name":"refund","type":"uint256"}],"name":"CancelKey","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newExpiration","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bool","name":"timeAdded","type":"bool"}],"name":"ExpirationChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ExpireKey","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"receiver","type":"address"},{"indexed":false,"internalType":"uint256","name":"refundedAmount","type":"uint256"},{"indexed":false,"internalType":"address","name":"tokenAddress","type":"address"}],"name":"GasRefunded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint8","name":"version","type":"uint8"}],"name":"Initialized","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newTimestamp","type":"uint256"}],"name":"KeyExtended","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"}],"name":"KeyGranterAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"}],"name":"KeyGranterRemoved","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"_tokenId","type":"uint256"},{"indexed":true,"internalType":"address","name":"_newManager","type":"address"}],"name":"KeyManagerChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"updatedRecordsCount","type":"uint256"}],"name":"KeysMigrated","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"expirationDuration","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"maxNumberOfKeys","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"maxKeysPerAcccount","type":"uint256"}],"name":"LockConfig","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"}],"name":"LockManagerAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"}],"name":"LockManagerRemoved","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"name","type":"string"},{"indexed":false,"internalType":"string","name":"symbol","type":"string"},{"indexed":false,"internalType":"string","name":"baseTokenURI","type":"string"}],"name":"LockMetadata","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":false,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"oldKeyPrice","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"keyPrice","type":"uint256"},{"indexed":false,"internalType":"address","name":"oldTokenAddress","type":"address"},{"indexed":false,"internalType":"address","name":"tokenAddress","type":"address"}],"name":"PricingChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"freeTrialLength","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"refundPenaltyBasisPoints","type":"uint256"}],"name":"RefundPenaltyChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"previousAdminRole","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"newAdminRole","type":"bytes32"}],"name":"RoleAdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleGranted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleRevoked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"transferFeeBasisPoints","type":"uint256"}],"name":"TransferFeeChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"lockAddress","type":"address"},{"indexed":false,"internalType":"address","name":"unlockAddress","type":"address"}],"name":"UnlockCallFailed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"sender","type":"address"},{"indexed":true,"internalType":"address","name":"tokenAddress","type":"address"},{"indexed":true,"internalType":"address","name":"recipient","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdrawal","type":"event"},{"inputs":[],"name":"DEFAULT_ADMIN_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"KEY_GRANTER_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"LOCK_MANAGER_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"addKeyGranter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"addLockManager","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_approved","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"approve","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_keyOwner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"cancelAndRefund","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"expirationDuration","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"expireAndRefundFor","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_value","type":"uint256"},{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"address","name":"_referrer","type":"address"},{"internalType":"bytes","name":"_data","type":"bytes"}],"name":"extend","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"freeTrialLength","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"gasRefundValue","outputs":[{"internalType":"uint256","name":"_refundValue","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"getApproved","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"getCancelAndRefundValue","outputs":[{"internalType":"uint256","name":"refund","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_keyOwner","type":"address"}],"name":"getHasValidKey","outputs":[{"internalType":"bool","name":"isValid","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"}],"name":"getRoleAdmin","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"uint256","name":"_time","type":"uint256"}],"name":"getTransferFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"uint256","name":"_duration","type":"uint256"}],"name":"grantKeyExtension","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"_recipients","type":"address[]"},{"internalType":"uint256[]","name":"_expirationTimestamps","type":"uint256[]"},{"internalType":"address[]","name":"_keyManagers","type":"address[]"}],"name":"grantKeys","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"grantRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"hasRole","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address payable","name":"_lockCreator","type":"address"},{"internalType":"uint256","name":"_expirationDuration","type":"uint256"},{"internalType":"address","name":"_tokenAddress","type":"address"},{"internalType":"uint256","name":"_keyPrice","type":"uint256"},{"internalType":"uint256","name":"_maxNumberOfKeys","type":"uint256"},{"internalType":"string","name":"_lockName","type":"string"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_owner","type":"address"},{"internalType":"address","name":"_operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isKeyGranter","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isLockManager","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isOwner","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"isValidKey","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"keyExpirationTimestampFor","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"keyManagerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"keyPrice","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_from","type":"address"},{"internalType":"address","name":"_recipient","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"lendKey","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"maxKeysPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxNumberOfKeys","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenIdFrom","type":"uint256"},{"internalType":"uint256","name":"_tokenIdTo","type":"uint256"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"mergeKeys","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes","name":"","type":"bytes"}],"name":"migrate","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"numberOfOwners","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onKeyCancelHook","outputs":[{"internalType":"contract ILockKeyCancelHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onKeyExtendHook","outputs":[{"internalType":"contract ILockKeyExtendHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onKeyGrantHook","outputs":[{"internalType":"contract ILockKeyGrantHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onKeyPurchaseHook","outputs":[{"internalType":"contract ILockKeyPurchaseHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onKeyTransferHook","outputs":[{"internalType":"contract ILockKeyTransferHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onTokenURIHook","outputs":[{"internalType":"contract ILockTokenURIHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"onValidKeyHook","outputs":[{"internalType":"contract ILockValidKeyHook","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"publicLockVersion","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_values","type":"uint256[]"},{"internalType":"address[]","name":"_recipients","type":"address[]"},{"internalType":"address[]","name":"_referrers","type":"address[]"},{"internalType":"address[]","name":"_keyManagers","type":"address[]"},{"internalType":"bytes[]","name":"_data","type":"bytes[]"}],"name":"purchase","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"address","name":"_recipient","type":"address"},{"internalType":"address","name":"_referrer","type":"address"},{"internalType":"bytes","name":"_data","type":"bytes"}],"name":"purchasePriceFor","outputs":[{"internalType":"uint256","name":"minKeyPrice","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"referrerFees","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"refundPenaltyBasisPoints","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"address","name":"_referrer","type":"address"}],"name":"renewMembershipFor","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"renounceLockManager","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"renounceRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_granter","type":"address"}],"name":"revokeKeyGranter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"revokeRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_from","type":"address"},{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_from","type":"address"},{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"bytes","name":"_data","type":"bytes"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"schemaVersion","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_to","type":"address"},{"internalType":"bool","name":"_approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_onKeyPurchaseHook","type":"address"},{"internalType":"address","name":"_onKeyCancelHook","type":"address"},{"internalType":"address","name":"_onValidKeyHook","type":"address"},{"internalType":"address","name":"_onTokenURIHook","type":"address"},{"internalType":"address","name":"_onKeyTransferHook","type":"address"},{"internalType":"address","name":"_onKeyExtendHook","type":"address"},{"internalType":"address","name":"_onKeyGrantHook","type":"address"}],"name":"setEventHooks","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_refundValue","type":"uint256"}],"name":"setGasRefundValue","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"address","name":"_keyManager","type":"address"}],"name":"setKeyManagerOf","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"_lockName","type":"string"},{"internalType":"string","name":"_lockSymbol","type":"string"},{"internalType":"string","name":"_baseTokenURI","type":"string"}],"name":"setLockMetadata","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"setOwner","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_referrer","type":"address"},{"internalType":"uint256","name":"_feeBasisPoint","type":"uint256"}],"name":"setReferrerFee","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_tokenIdFrom","type":"uint256"},{"internalType":"uint256","name":"_timeShared","type":"uint256"}],"name":"shareKey","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"interfaceId","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],"name":"tokenByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_keyOwner","type":"address"},{"internalType":"uint256","name":"_index","type":"uint256"}],"name":"tokenOfOwnerByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_keyOwner","type":"address"}],"name":"totalKeys","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_tokenId","type":"uint256"},{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_valueBasisPoint","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"transferFeeBasisPoints","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_from","type":"address"},{"internalType":"address","name":"_recipient","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"transferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_recipient","type":"address"},{"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"unlendKey","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"unlockProtocol","outputs":[{"internalType":"contract IUnlock","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_keyPrice","type":"uint256"},{"internalType":"address","name":"_tokenAddress","type":"address"}],"name":"updateKeyPricing","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_newExpirationDuration","type":"uint256"},{"internalType":"uint256","name":"_maxNumberOfKeys","type":"uint256"},{"internalType":"uint256","name":"_maxKeysPerAcccount","type":"uint256"}],"name":"updateLockConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_freeTrialLength","type":"uint256"},{"internalType":"uint256","name":"_refundPenaltyBasisPoints","type":"uint256"}],"name":"updateRefundPenalty","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"updateSchemaVersion","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_transferFeeBasisPoints","type":"uint256"}],"name":"updateTransferFee","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_tokenAddress","type":"address"},{"internalType":"address payable","name":"_recipient","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}]
+
 let textures = {
   magenta3: "/src/assets/magenta3.png",
-  magenta9: "/src/assets/magenta9.png",
   teal6: "/src/assets/teal6.png",
-  purple3: "/src/assets/purple3.png",
   purple9: "/src/assets/purple9.png",
-  pinkTile: "/src/assets/pinktile.png",
-  orangeTile: "/src/assets/orangetile.png",
-  blackTile: "/src/assets/blacktile2.png",
-  purpleTile: "/src/assets/purpleTexture.png",
-  tealTile: "/src/assets/tealTexture.png",
-  magentaTile: "/src/assets/magentaTexture.png",
 };
 
 // allow mousepick
@@ -55,6 +53,7 @@ const frustumSize = 600;
 function init() {
   init3DSetup();
   initGameSystem();
+  initGUI();
 }
 
 function init3DSetup() {
@@ -71,14 +70,6 @@ function init3DSetup() {
   scene.add(light);
 
   //
-  focalPoint = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
-    new THREE.MeshBasicMaterial({ color: 0xffff00 })
-  );
-  focalPoint.position.z = -700;
-  focalPoint.visible = false;
-  scene.add(focalPoint);
-
   createStarScape();
 
   //
@@ -116,6 +107,19 @@ function initCameras() {
   mainCameraRig = new THREE.Group();
   mainCameraRig.add(mainCamera);
 
+  focalPoint = new THREE.Mesh(
+    new THREE.BoxGeometry(10, 50, 70, 2, 5, 5),
+    new THREE.MeshBasicMaterial({ color: 0xffff00 })
+  );
+  focalPoint.position.z = -700;
+  focalPoint.visible = false;
+  scene.add(focalPoint);
+
+  
+  mainCameraRig.lookAt(focalPoint.position);
+  mainCameraRig.position.z += 300;
+  mainCameraRig.position.y += 50;
+
   scene.add(mainCameraRig);
   scene.add(backstageCamera);
 
@@ -136,6 +140,63 @@ function initGameSystem() {
 
   window.addEventListener("keydown", onKeyDown);
 }
+
+function initGUI() {
+  doRequestAccounts();
+  document.getElementById("next").addEventListener('click',
+    () => {
+      boardService.send({ type: "PRESENT_NEXT" });
+    })
+
+  document.getElementById("claim").addEventListener('click',
+  async () => {
+    boardService.send({ type: "CLAIM" });
+    const signer = provider.getSigner()    
+
+    const contract = new ETHERS.Contract( "0x8d72a5a15979ad95526abc01dec33631db6a9095" , abi , signer )
+    
+    console.log(await contract.name()); // => "Unlock Times"
+
+
+  // Let's get the key price so we know how much we need to send (we could send more!)
+    const amount = await contract.keyPrice();
+
+    // Purchase params:
+    // The purchase function in v11 supports making multiple purchases... here we just pass a single one.
+    const purchaseParams = [
+      [amount],
+      [requestAccounts[0]], // This is the recipient of the membership (us!)
+      [requestAccounts[0]], // The is the referrer who will earn UDT tokens (we'd like this to be us!)
+      [ETHERS.constants.AddressZero], // The key manager. if 0x0, then it is the recipient by default
+      [[]], // empty data object (not used here)
+    ];
+    console.log('purchaseParams', purchaseParams)
+    const options = {
+      value: amount, // This is a lock that uses Ether, so it means we need send value. If it was an ERC20 we could set this to 0 and just use the amount on purchase's first argument
+    };
+
+    // We can now send transactions to modify the state of the lock, like purchase a key!
+    const transaction = await contract.purchase(...purchaseParams, options);
+    console.log(transaction.hash);
+    const receipt = await transaction.wait();
+    console.log(receipt);
+
+    
+    //const signedMessage = await signer.signMessage("Message")
+  })
+}
+
+async function doRequestAccounts() {
+  return new Promise(resolve => {
+    document.getElementById("sign_in").addEventListener('click',
+          async function handler(event) {
+              requestAccounts = await provider.send("eth_requestAccounts", []);
+              console.log("signed in " + requestAccounts);
+          });
+  });
+}
+
+
 
 const initBlockMachines = () => {
   console.log("initBlockMachines");
@@ -360,20 +421,28 @@ const createBoardMachine = (
           },
         },
         present: {
-          entry: ["unpresent_last", "present_assign", "present_next"],
+          entry: ["unpresent_last", "present_assign", "present_next", ],
           on: {
             PRESENT_NEXT: {
               target: "present",
             },
+            CLAIM_CURRENT: {
+              target: "claiming",
+            }
           },
         },
+        claiming: {
+          entry: ["claim_current"],
+          on: {
+            PRESENT_NEXT: {
+              target: "present",
+            }
+          }
+        }
       },
     },
     {
       actions: {
-        ready_test: (ctx, e) => {
-          console.log("ctx", ctx.blockScript.script[ctx.blockScript.index]);
-        },
         ready_action: (ctx, event) => {
           console.log("ready_action", ctx);
         },
@@ -435,6 +504,9 @@ const createBoardMachine = (
           );
           return s;
         })(),
+        ready_test: (ctx, e) => {
+          console.log("ctx", ctx.blockScript.script[ctx.blockScript.index]);
+        },
         present_next: (() => {
           console.log("board present_next");
           //let nxt = ctx.next;
@@ -457,15 +529,35 @@ const createBoardMachine = (
         })(),
         present_assign: assign({
           actor: (ctx, e) => {
-            console.log("ctx.blockScript.script[0]", ctx.blockScript.script[0]);
+            console.log("ctx.blockScript.script[ctx.blockScript.index]", ctx.blockScript.script[ctx.blockScript.index]);
             let nextBlock = ctx.blockScript.script[ctx.blockScript.index];
-            ctx.blockScript.index = ctx.blockScript.index + 1;
+            ctx.blockScript.index += 1;
             if (ctx.blockScript.index >= ctx.blockScript.script.length) {
               ctx.blockScript.index = 0;
             }
             return nextBlock;
           },
         }),
+        claim_current: (() => {
+          console.log("board claim_current");
+          //let nxt = ctx.next;
+          let s = send(
+            {
+              type: "PRESENT",
+              event: {
+                present_to: {
+                  position: {
+                    x: activeCamera.position.x,
+                    y: activeCamera.position.y+20,
+                    z: activeCamera.position.z+10,
+                  },
+                },
+              },
+            },
+            { to: (ctx) => ctx.actor }
+          );
+          return s;
+        })(),
       },
     }
   );
@@ -604,7 +696,8 @@ function render() {
   //activeCamera.rotation.x = Math.sin(THREE.MathUtils.degToRad(theta));
   //activeCamera.rotation.z = activeCamera.rotation.z + 0.01;
 
-  mainCameraRig.lookAt(focalPoint.position);
+  
+  
 
   //render from current activeCamera
   renderer.clear();
@@ -674,7 +767,7 @@ function onKeyDown(event) {
       console.log("go_backstage");
       mainCameraService.send({ type: "GO_BACKSTAGE" });
       break;
-    case 78 /*N*/:
+    case 79 /*O*/:
       console.log("sending SWAP");
       blockService.send({ type: "SWAP" });
       break;
@@ -682,7 +775,7 @@ function onKeyDown(event) {
       console.log("sending SWAP");
       blockService.send({ type: "SWAP" });
       break;
-    case 65 /*A*/:
+    case 78 /*N*/:
       console.log("sending PRESENT");
       // blockServices[0].send({
       //   type: "PRESENT",
@@ -697,6 +790,10 @@ function onKeyDown(event) {
       //   },
       // });
       boardService.send({ type: "PRESENT_NEXT" });
+      break;
+    case 67 /*C*/:
+      console.log("sending CLAIM_CURRENT");
+      boardService.send({ type: "CLAIM_CURRENT" });
       break;
   }
 }

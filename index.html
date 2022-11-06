@@ -6,9 +6,41 @@
     <link rel="stylesheet" type="text/css" href="main.css" media="screen" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
+    <style>
+			#menu {
+				position: absolute;
+				bottom: 20px;
+				width: 100%;
+				text-align: center;
+			}
+
+      button:hover {
+				background-color: rgba(0,255,255,0.5);
+			}
+
+			button:active {
+				color: #000000;
+				background-color: rgba(0,255,255,0.75);
+			}
+
+      button {
+				color: rgba(127,255,255,0.75);
+				background: transparent;
+				outline: 1px solid rgba(127,255,255,0.75);
+				border: 0px;
+				padding: 5px 10px;
+				cursor: pointer;
+			}
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    
+    <div id="menu">
+		<button id="sign_in">SIGN IN</button>
+		<button id="next">NEXT (N)</button>
+		<button id="claim">CLAIM (C)</button>
+	</div>
+
     <script type="module" src="/main.js"></script>
   </body>
 </html>
