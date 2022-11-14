@@ -4,7 +4,7 @@ import * as Stats from "stats.js";
 import { timer } from "/src/util/timer.js";
 import { assign, createMachine, interpret, send, spawn } from "xstate";
 import { EventEmitter } from "/src/util/event_emitter.ts";
-import { BlockMaker } from "/src/data/blocks.ts";
+import { BlockMaker } from "/src/data/blocks.js";
 import * as ETHERS from "ethers";
 import Web3 from "web3";
 

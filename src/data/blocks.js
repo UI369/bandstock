@@ -1,36 +1,51 @@
+export let BlockMaker = function BlockMaker() {
+  let that = this;
 
+  this.makeBlocks = function makeBlocks() {
+    let x = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+    let y = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+    let c = ["magenta3", "teal6", "purple9"];
+    let result = Array();
+    let i = 0;
 
-export class BlockMaker {
-
-    public makeBlocks(){
-        let x = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
-        let y = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
-        let c = ["magenta3","teal6","purple9",]
-        let result = Array();
-        let i = 0;
-
-        x.forEach((xe) => {
-            y.forEach((ye) => {
-                result.push({ name: "block-" + i, c: c[(i%c.length)], x: xe, y: ye, z: 0 });
-                i++
-            });
+    x.forEach((xe) => {
+      y.forEach((ye) => {
+        result.push({
+          name: "block-" + i,
+          c: c[i % c.length],
+          x: xe,
+          y: ye,
+          z: 0,
         });
+        i++;
+      });
+    });
 
-        return result;
+    that.blocks = result;
+  };
+
+  this.initBlockScript = function initBlockScript(lenIn) {
+    that.script = Array.from({ length: lenIn }).map((_, i) => {
+      return "block-" + i;
+    });
+    that.index = 0;
+  };
+
+  this.getNextBlock = function getNextBlock() {
+    let val = that.script[that.index];
+
+    that.index += 1;
+    if (that.index >= that.script.length) {
+      that.index = 0;
     }
+    return val;
+  };
 
-    public getBlockScript(){
-         let script = Array.from({ length: 121 }).map((_, i) =>{
-            return "block-"+i;
-         })
-
-         return {
-            script: script,
-            index: 0
-         }
-    }
-
-
+  this.getCurBlock = function getCurBlock() {
+    let val = that.script[that.index];
+    return val;
+  };
+};
 
 // const initBlockMachines = () => {
 //   console.log("initBlockMachines");
@@ -63,6 +78,3 @@ export class BlockMaker {
 //   }
 //   console.log("end initBlock blockMachines[0]", blockMachines[0]);
 // };
-
-
-}

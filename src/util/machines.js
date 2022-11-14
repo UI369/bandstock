@@ -127,14 +127,13 @@ export let Machines = function Machines(_3D) {
             that._3D.transform(ctx.block, object, ctx.speed);
           },
           presenting_assign: (ctx, e) => {
-            console.log("block presenting_assign");
-            console.log(e.event);
+            console.log("block presenting_assign", e.event);
             ctx.x = e.event.present_to.position.x;
             ctx.y = e.event.present_to.position.y;
             ctx.z = e.event.present_to.position.z;
           },
           presenting_action: (ctx, event) => {
-            console.log("block presenting_action");
+            console.log("block presenting_action ctx", ctx);
             const object = new THREE.Object3D();
             object.position.x = ctx.x;
             object.position.y = ctx.y;
@@ -153,6 +152,10 @@ export let Machines = function Machines(_3D) {
     macroZIn,
     blockMaker
   ) {
+    blockMaker.makeBlocks();
+    blockMaker.initBlockScript(121);
+
+    console.log("blockMaker", blockMaker);
     return createMachine(
       {
         id: "board_machine." + nameIn,
@@ -161,8 +164,7 @@ export let Machines = function Machines(_3D) {
           macroX: macroXIn,
           macroY: macroYIn,
           macroZ: macroZIn,
-          blockData: blockMaker.makeBlocks(),
-          blockScript: blockMaker.getBlockScript(),
+          blockMaker: blockMaker,
           name: nameIn,
           blockSize: 50,
           next: 0,
@@ -170,7 +172,7 @@ export let Machines = function Machines(_3D) {
         initial: "ready",
         states: {
           ready: {
-            entry: ["ready_action", "ready_assign", "ready_test"],
+            entry: ["ready_assign", "ready_action"],
             on: {
               PRESENT_NEXT: {
                 target: "present",
@@ -204,23 +206,8 @@ export let Machines = function Machines(_3D) {
             console.log("ready_action", ctx);
           },
           ready_assign: assign((ctx) => {
-            // const blocks = Array.from({ length: 121 }).map((_, i) =>
-            //   spawn(
-            //     createBlockMachine(
-            //       `block-${i}`,
-            //       "magenta3",
-            //       focalPoint.position.x,
-            //       focalPoint.position.y,
-            //       focalPoint.position.z
-            //     ),
-            //     {
-            //       name: `cell-${i}`,
-            //     }
-            //   )
-            // );
-
             console.log("ready_assign", ctx);
-            const blocks = ctx.blockData.map((element, _) => {
+            const blocks = ctx.blockMaker.blocks.map((element, _) => {
               let block = that.createBlockMachine(
                 element.name,
                 element.c,
@@ -231,13 +218,11 @@ export let Machines = function Machines(_3D) {
               spawn(block, { name: element.name });
               return block;
             });
-            console.log("blocks", blocks);
 
             const actors = blocks.reduce((all, curr, i) => {
               return { ...all, [`block-${i}`]: curr };
             }, {});
-
-            console.log("actors", actors);
+            actors.actor = `block-0`;
             return actors;
           }),
           unpresent_last: (() => {
@@ -247,12 +232,9 @@ export let Machines = function Machines(_3D) {
                 event: {
                   present_to: {
                     position: {
-                      x: ctx[ctx.blockScript.script[ctx.blockScript.index]]
-                        ._context.x,
-                      y: ctx[ctx.blockScript.script[ctx.blockScript.index]]
-                        ._context.y,
-                      z: ctx[ctx.blockScript.script[ctx.blockScript.index]]
-                        ._context.z,
+                      x: ctx[ctx.actor]._context.x,
+                      y: ctx[ctx.actor]._context.y,
+                      z: ctx[ctx.actor]._context.z,
                     },
                   },
                 },
@@ -261,11 +243,14 @@ export let Machines = function Machines(_3D) {
             );
             return s;
           })(),
-          ready_test: (ctx, e) => {
-            console.log("ctx", ctx.blockScript.script[ctx.blockScript.index]);
-          },
+          present_assign: assign({
+            actor: (ctx, e) => {
+              let nextBlock = ctx.blockMaker.getNextBlock();
+              console.log("nextBlock", nextBlock);
+              return nextBlock;
+            },
+          }),
           present_next: (() => {
-            console.log("board present_next");
             //let nxt = ctx.next;
             let s = send(
               {
@@ -284,20 +269,6 @@ export let Machines = function Machines(_3D) {
             );
             return s;
           })(),
-          present_assign: assign({
-            actor: (ctx, e) => {
-              console.log(
-                "ctx.blockScript.script[ctx.blockScript.index]",
-                ctx.blockScript.script[ctx.blockScript.index]
-              );
-              let nextBlock = ctx.blockScript.script[ctx.blockScript.index];
-              ctx.blockScript.index += 1;
-              if (ctx.blockScript.index >= ctx.blockScript.script.length) {
-                ctx.blockScript.index = 0;
-              }
-              return nextBlock;
-            },
-          }),
           claim_current: (() => {
             console.log("board claim_current");
             //let nxt = ctx.next;
