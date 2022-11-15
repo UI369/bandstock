@@ -76,6 +76,7 @@ function init3DSetup() {
 
   //
   createStarScape();
+  addLogo();
 
   //
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -243,11 +244,11 @@ function animate() {
 }
 
 function render() {
-  //const r = Date.now() * 0.0005;
+  const r = Date.now() * 0.0005;
 
   //Wibble wobble camera thing
-  /*theta += delta;
-  activeCamera.position.x = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
+  //theta += delta;
+  /*activeCamera.position.x = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.y = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.position.z = 50 * Math.sin(THREE.MathUtils.degToRad(theta));
   activeCamera.lookAt(focalPoint.position);
@@ -256,6 +257,8 @@ function render() {
   }*/
 
   theta += delta;
+  //_3D.logoBlock.rotation.z = Math.sin(THREE.MathUtils.degToRad(theta));
+  _3D.logoBlock.rotation.y = Math.sin(THREE.MathUtils.degToRad(theta)) / 18;
   //activeCamera.rotation.x = Math.sin(THREE.MathUtils.degToRad(theta));
   //activeCamera.rotation.z = activeCamera.rotation.z + 0.01;
 
@@ -286,6 +289,22 @@ function createStarScape() {
     new THREE.PointsMaterial({ color: 0x888888 })
   );
   _3D.scene.add(particles);
+}
+
+function addLogo() {
+  const textureLoader = new THREE.TextureLoader();
+  const material = new THREE.MeshBasicMaterial({
+    map: textureLoader.load("/src/assets/bandstock_logo.png"),
+  });
+
+  _3D.logoBlock = new THREE.Mesh(
+    new THREE.BoxGeometry(500, 100, 10, 2, 2, 2),
+    material
+  );
+
+  _3D.logoBlock.position.y = 350;
+  _3D.logoBlock.position.z = -650;
+  _3D.scene.add(_3D.logoBlock);
 }
 
 _3D.transform = function transform(object, target, duration) {
