@@ -32,13 +32,20 @@ export let BlockMaker = function BlockMaker() {
   };
 
   this.getNextBlock = function getNextBlock() {
-    let val = that.script[that.index];
-
     that.index += 1;
     if (that.index >= that.script.length) {
       that.index = 0;
     }
-    return val;
+
+    return that.script[that.index];
+  };
+
+  this.getPrevBlock = function getPrevBlock() {
+    that.index -= 1;
+    if (that.index < 0) {
+      that.index = that.script.length - 1;
+    }
+    return that.script[that.index];
   };
 
   this.getCurBlock = function getCurBlock() {

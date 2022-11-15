@@ -180,10 +180,16 @@ export let Machines = function Machines(_3D) {
             },
           },
           present: {
-            entry: ["unpresent_last", "present_assign", "present_next"],
+            entry: ["do_present"],
+            exit: ["unpresent_last"],
             on: {
               PRESENT_NEXT: {
                 target: "present",
+                actions: "present_next_assign",
+              },
+              PRESENT_PREV: {
+                target: "present",
+                actions: "present_prev_assign",
               },
               CLAIM_CURRENT: {
                 target: "claiming",
@@ -192,9 +198,15 @@ export let Machines = function Machines(_3D) {
           },
           claiming: {
             entry: ["claim_current"],
+            exit: ["unpresent_last"],
             on: {
               PRESENT_NEXT: {
                 target: "present",
+                actions: "present_next_assign",
+              },
+              PRESENT_PREV: {
+                target: "present",
+                actions: "present_prev_assign",
               },
             },
           },
@@ -243,14 +255,19 @@ export let Machines = function Machines(_3D) {
             );
             return s;
           })(),
-          present_assign: assign({
+          present_next_assign: assign({
             actor: (ctx, e) => {
               let nextBlock = ctx.blockMaker.getNextBlock();
-              console.log("nextBlock", nextBlock);
+              console.log("prsent_next_assign", nextBlock);
               return nextBlock;
             },
           }),
-          present_next: (() => {
+          present_prev_assign: assign({
+            actor: (ctx, e) => {
+              return ctx.blockMaker.getPrevBlock();
+            },
+          }),
+          do_present: (() => {
             //let nxt = ctx.next;
             let s = send(
               {

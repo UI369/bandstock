@@ -153,6 +153,10 @@ function initGUI() {
     boardService.send({ type: "PRESENT_NEXT" });
   });
 
+  document.getElementById("prev").addEventListener("click", () => {
+    boardService.send({ type: "PRESENT_PREV" });
+  });
+
   document.getElementById("claim").addEventListener("click", async () => {
     boardService.send({ type: "CLAIM" });
     auth.doUnlockTransaction();
@@ -333,19 +337,11 @@ function onKeyDown(event) {
       break;
     case 78 /*N*/:
       console.log("sending PRESENT");
-      // blockServices[0].send({
-      //   type: "PRESENT",
-      //   event: {
-      //     present_to: {
-      //       position: {
-      //         x: activeCamera.position.x,
-      //         y: activeCamera.position.y,
-      //         z: activeCamera.position.z - 200,
-      //       },
-      //     },
-      //   },
-      // });
       boardService.send({ type: "PRESENT_NEXT" });
+      break;
+    case 66 /*B*/:
+      console.log("sending PRESENT");
+      boardService.send({ type: "PRESENT_PREV" });
       break;
     case 67 /*C*/:
       console.log("sending CLAIM_CURRENT");
