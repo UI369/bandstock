@@ -306,7 +306,7 @@ function addLogo() {
   _3D.logoBlock.position.z = -650;
   _3D.scene.add(_3D.logoBlock);
 }
-
+//https://tweenjs.github.io/tween.js/examples/03_graphs.html
 _3D.transform = function transform(object, target, duration) {
   let distance = object.position.distanceTo(target.position);
 
@@ -315,7 +315,7 @@ _3D.transform = function transform(object, target, duration) {
       { x: target.position.x, y: target.position.y, z: target.position.z },
       duration
     )
-    .easing(Easing.Elastic.Out)
+    .easing(Easing.Exponential.Out)
     .start();
 
   new Tween(object.rotation)
@@ -323,7 +323,7 @@ _3D.transform = function transform(object, target, duration) {
       { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z },
       duration
     )
-    .easing(Easing.Exponential.InOut)
+    .easing(Easing.Linear.None)
     .start();
 
   new Tween(this)

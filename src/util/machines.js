@@ -31,7 +31,7 @@ export let Machines = function Machines(_3D) {
           z: zIn,
           type: typeIn,
           note: "note",
-          speed: 2000,
+          speed: 500,
           block: undefined,
         },
         initial: "ready",
@@ -276,8 +276,8 @@ export let Machines = function Machines(_3D) {
                   present_to: {
                     position: {
                       x: that._3D.activeCamera.position.x,
-                      y: that._3D.activeCamera.position.y,
-                      z: that._3D.activeCamera.position.z - 400,
+                      y: that._3D.activeCamera.position.y + 39.5,
+                      z: that._3D.activeCamera.position.z + 72,
                     },
                   },
                 },
@@ -296,8 +296,8 @@ export let Machines = function Machines(_3D) {
                   present_to: {
                     position: {
                       x: that._3D.activeCamera.position.x,
-                      y: that._3D.activeCamera.position.y + 20,
-                      z: that._3D.activeCamera.position.z + 10,
+                      y: that._3D.activeCamera.position.y + 45,
+                      z: that._3D.activeCamera.position.z + 180,
                     },
                   },
                 },
