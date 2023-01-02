@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { Tween, Easing, update } from "@tweenjs/tween.js";
 import * as Stats from "stats.js";
 import { timer } from "/src/util/timer.js";
+import { scriptRunner } from "/src/util/scriptRunner.js";
+
 import { assign, createMachine, interpret, send, spawn } from "xstate";
 import { EventEmitter } from "/src/util/event_emitter.ts";
 import { BlockMaker } from "/src/data/blocks.js";
@@ -366,11 +368,30 @@ function onKeyDown(event) {
       console.log("sending CLAIM_CURRENT");
       boardService.send({ type: "CLAIM_CURRENT" });
       break;
+    case 82 /*R*/:
+      console.log("Sending DO_RIPPLE");
+      doCycle();
+      break;
+    case 83 /*S*/:
+      console.log("Sending DO_RIPPLE");
+      doRipple();
+      break;
   }
 }
 
+function doCycle() {
+  let script = blockMaker.getCycleScript();
+  //blockMaker.boardService.send({ type: "DO_RIPPLE" });
+  let workFunc = (element) => {
+    boardService.send({ type: "PRESENT_INDEX", index: element.index });
+  };
+  script.forEach((element) => {
+    setTimeout(workFunc, element.offset, element);
+  });
+}
+
 function doTimer(services, doLog, label) {
-  interval = 400;
+  let interval = 400;
 
   let t1 = new timer(
     () => {
@@ -380,7 +401,7 @@ function doTimer(services, doLog, label) {
     },
     interval,
     (now, expected, drift, interval) => {
-      // console.log("now", now);
+      console.log("now", now);
       // console.log("drift", drift);
       // console.log("expected", expected);
       // console.log("interval", interval);
@@ -389,7 +410,7 @@ function doTimer(services, doLog, label) {
 
     (logLabel, now, expected, drift, interval, lastInterval) => {
       if (drift > 20) {
-        // console.log("logLabel", logLabel);
+        console.log("logLabel", logLabel);
         // console.log("now", now / 1000);
         // console.log("expected", expected);
         // console.log("drift", drift);

@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 export let Machines = function Machines(_3D) {
   let that = this;
+
   that._3D = _3D;
   console.log("that.activeCamera", that.activeCamera);
 
@@ -12,6 +13,22 @@ export let Machines = function Machines(_3D) {
     purple9: "/src/assets/purple9.png",
   };
   let tiles = [];
+
+  that.stockClock = {
+    // Hash for storing the time intervals for each key
+    intervals: {},
+
+    // Function for setting the time interval for a given key
+    setInterval(key, interval) {
+      this.intervals[key] = interval;
+    },
+
+    // Function for getting the next time for a given key
+    getNextTime(key) {
+      // Return the next time by adding the interval to the current time
+      return this.intervals[key] || 100;
+    },
+  };
 
   this.createBlockMachine = function createBlockMachine(
     idIn,
@@ -155,6 +172,8 @@ export let Machines = function Machines(_3D) {
     blockMaker.makeBlocks();
     blockMaker.initBlockScript(121);
 
+    that.stockClock.setInterval(369, 150);
+
     console.log("blockMaker", blockMaker);
     return createMachine(
       {
@@ -177,6 +196,21 @@ export let Machines = function Machines(_3D) {
               PRESENT_NEXT: {
                 target: "present",
               },
+              PRESENT_PREV: {
+                target: "present",
+                actions: "present_prev_assign",
+              },
+              DO_RIPPLE: {
+                target: "ripple",
+              },
+              PRESENT_INDEX: {
+                target: "present",
+                actions: "present_index_assign",
+              },
+              BUMP_INDEX: {
+                target: "bump",
+                actions: "present_index_assign",
+              },
             },
           },
           present: {
@@ -194,7 +228,14 @@ export let Machines = function Machines(_3D) {
               CLAIM_CURRENT: {
                 target: "claiming",
               },
+              PRESENT_INDEX: {
+                target: "present",
+                actions: "present_index_assign",
+              },
             },
+          },
+          bump: {
+            entry: ["do_bump"],
           },
           claiming: {
             entry: ["claim_current"],
@@ -208,12 +249,44 @@ export let Machines = function Machines(_3D) {
                 target: "present",
                 actions: "present_prev_assign",
               },
+              PRESENT_INDEX: {
+                target: "present",
+                actions: "present_index_assign",
+              },
             },
+          },
+          ripple: {
+            entry: ["do_ripple"],
+            exit: [],
+            on: {},
           },
         },
       },
       {
         actions: {
+          do_ripple: (() => {
+            let s = send(
+              {
+                type: "PRESENT",
+                event: {
+                  present_to: {
+                    position: {
+                      x: that._3D.activeCamera.position.x,
+                      y: that._3D.activeCamera.position.y + 39.5,
+                      z: that._3D.activeCamera.position.z + 72,
+                    },
+                    when: {
+                      wait: that.stockClock.getNextTime({
+                        key: 369,
+                      }),
+                    },
+                  },
+                },
+              },
+              { to: (ctx) => ctx.actor }
+            );
+            return s;
+          })(),
           ready_action: (ctx, event) => {
             console.log("ready_action", ctx);
           },
@@ -258,13 +331,20 @@ export let Machines = function Machines(_3D) {
           present_next_assign: assign({
             actor: (ctx, e) => {
               let nextBlock = ctx.blockMaker.getNextBlock();
-              console.log("prsent_next_assign", nextBlock);
+              console.log("present_next_assign", nextBlock);
               return nextBlock;
             },
           }),
           present_prev_assign: assign({
             actor: (ctx, e) => {
               return ctx.blockMaker.getPrevBlock();
+            },
+          }),
+          present_index_assign: assign({
+            actor: (ctx, e) => {
+              console.log("present_index_assign!", e);
+              console.log("blockMaker", ctx.blockMaker);
+              return ctx.blockMaker.getBlockByIndex(e.index);
             },
           }),
           do_present: (() => {
@@ -286,6 +366,17 @@ export let Machines = function Machines(_3D) {
             );
             return s;
           })(),
+          do_bump: () => {
+            let s = send(
+              {
+                type: "BUMP",
+                event: {
+                  height: 10,
+                },
+              },
+              { to: (ctx) => ctx.blockMaker.getBlockByIndex(1) }
+            );
+          },
           claim_current: (() => {
             console.log("board claim_current");
             //let nxt = ctx.next;

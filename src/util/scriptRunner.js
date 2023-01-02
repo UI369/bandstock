@@ -7,22 +7,20 @@
  * @param {function} errorFunc (Optional) Callback to run if the drift
  *                             exceeds interval
  */
-export let timer = function AdjustingInterval(
+export let scriptRunner = function AdjustingInterval(
   workFunc,
-  interval,
+  script,
   errorFunc,
   doLog,
   logFunc,
   logLabel
 ) {
   let that = this;
-  let expected, timeout;
-  let lastInterval;
-  this.interval = interval;
 
   this.start = function () {
-    expected = Date.now() + this.interval;
-    timeout = setTimeout(step, this.interval);
+    script.forEach((element) => {
+      setTimeout(workFunc, element.offset);
+    });
   };
 
   this.stop = function () {
@@ -48,7 +46,6 @@ export let timer = function AdjustingInterval(
 
       expected += that.interval;
       lastInterval = that.interval - drift;
-      timeout = setTimeout(step, Math.max(0, lastInterval));
     }
   }
 };
