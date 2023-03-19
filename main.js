@@ -145,8 +145,6 @@ function initGameSystem() {
   window.blockServices = blockServices;
   window.mainCameraService = mainCameraService;
   window.boardService = boardService;
-
-  window.addEventListener("keydown", onKeyDown);
 }
 
 function initGUI() {
@@ -161,9 +159,56 @@ function initGUI() {
   });
 
   document.getElementById("claim").addEventListener("click", async () => {
-    boardService.send({ type: "CLAIM" });
+    boardService.send({ type: "CLAIM_CURRENT" });
     auth.doUnlockTransaction();
   });
+
+  window.addEventListener("keydown", onKeyDown);
+}
+
+function onKeyDown(event) {
+  switch (event.keyCode) {
+    case 80 /*P*/:
+      console.log("go_perspective");
+      mainCameraService.send({ type: "GO_PERSPECTIVE" });
+      break;
+    case 76 /*L*/:
+      console.log("go_live");
+      mainCameraService.send({ type: "GO_LIVE" });
+      break;
+    case 75 /*K*/:
+      console.log("go_backstage");
+      mainCameraService.send({ type: "GO_BACKSTAGE" });
+      break;
+    case 79 /*O*/:
+      console.log("sending SWAP");
+      blockService.send({ type: "SWAP" });
+      break;
+    case 70 /*F*/:
+      console.log("sending SWAP");
+      blockService.send({ type: "SWAP" });
+      break;
+    case 78 /*N*/:
+      console.log("sending PRESENT");
+      boardService.send({ type: "PRESENT_NEXT" });
+      break;
+    case 66 /*B*/:
+      console.log("sending PRESENT");
+      boardService.send({ type: "PRESENT_PREV" });
+      break;
+    case 67 /*C*/:
+      console.log("sending CLAIM_CURRENT");
+      boardService.send({ type: "CLAIM_CURRENT" });
+      break;
+    case 82 /*R*/:
+      console.log("Sending DO_RIPPLE");
+      doCycle();
+      break;
+    case 83 /*S*/:
+      console.log("Sending DO_RIPPLE");
+      doRipple();
+      break;
+  }
 }
 
 const initServices = () => {
@@ -307,9 +352,23 @@ function addLogo() {
   _3D.logoBlock.position.y = 350;
   _3D.logoBlock.position.z = -650;
   _3D.scene.add(_3D.logoBlock);
+
+  _3D.addressBlock = new THREE.Mesh(
+    new THREE.BoxGeometry(500, 10, 10, 2, 2, 2),
+    material
+  );
+
+  _3D.addressBlock.position.y = 285;
+  _3D.addressBlock.position.z = -650;
+  _3D.scene.add(_3D.addressBlock);
 }
 //https://tweenjs.github.io/tween.js/examples/03_graphs.html
-_3D.transform = function transform(object, target, duration) {
+_3D.transform = function transform(
+  object,
+  target,
+  duration,
+  vibe = Easing.Exponential.Out
+) {
   let distance = object.position.distanceTo(target.position);
 
   new Tween(object.position)
@@ -333,51 +392,6 @@ _3D.transform = function transform(object, target, duration) {
     .onUpdate(render)
     .start();
 };
-
-function onKeyDown(event) {
-  switch (event.keyCode) {
-    case 80 /*P*/:
-      console.log("go_perspective");
-      mainCameraService.send({ type: "GO_PERSPECTIVE" });
-      break;
-    case 76 /*L*/:
-      console.log("go_live");
-      mainCameraService.send({ type: "GO_LIVE" });
-      break;
-    case 75 /*K*/:
-      console.log("go_backstage");
-      mainCameraService.send({ type: "GO_BACKSTAGE" });
-      break;
-    case 79 /*O*/:
-      console.log("sending SWAP");
-      blockService.send({ type: "SWAP" });
-      break;
-    case 70 /*F*/:
-      console.log("sending SWAP");
-      blockService.send({ type: "SWAP" });
-      break;
-    case 78 /*N*/:
-      console.log("sending PRESENT");
-      boardService.send({ type: "PRESENT_NEXT" });
-      break;
-    case 66 /*B*/:
-      console.log("sending PRESENT");
-      boardService.send({ type: "PRESENT_PREV" });
-      break;
-    case 67 /*C*/:
-      console.log("sending CLAIM_CURRENT");
-      boardService.send({ type: "CLAIM_CURRENT" });
-      break;
-    case 82 /*R*/:
-      console.log("Sending DO_RIPPLE");
-      doCycle();
-      break;
-    case 83 /*S*/:
-      console.log("Sending DO_RIPPLE");
-      doRipple();
-      break;
-  }
-}
 
 function doCycle() {
   let script = blockMaker.getCycleScript();
