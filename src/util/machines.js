@@ -156,8 +156,8 @@ export let Machines = function Machines(_3D) {
             object.position.y = ctx.y;
             object.position.z = ctx.z;
             that._3D.transform(ctx.block, object, ctx.speed);
-            object.rotation.z = Math.PI * 2;
-            that._3D.transform(ctx.block, object, 3000);
+            object.rotation.z = object.rotation.z + Math.PI * 2;
+            that._3D.transform(ctx.block, object, ctx.speed * 2.2);
           },
         },
       }
