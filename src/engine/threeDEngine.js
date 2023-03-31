@@ -81,4 +81,4 @@ function initCameras() {
   console.log("_3D.backstageCamera.position", _3D.backstageCamera.position);
 }
 
-export { _3D, container, init3DSetup, initCameras };
+export { _3D, container, init3DSetup };
